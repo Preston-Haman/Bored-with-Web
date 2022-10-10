@@ -1,8 +1,48 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+	ViewData["Title"] = "Home";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="alert alert-warning" role="alert">
+	This website is under construction!
+	Bear in mind that some features are unavailable, and may never be!
 </div>
+<h1>Welcome to Bored with Web</h1>
+
+<div class="row">
+	<div class="col-sm-6">
+		<div class="card mx-1 my-3">
+			<div class="card-body bg-light">
+				<h3 class="card-title">Connect Four</h3>
+				<p class="card-text">Play Connect Four Online with Friends or Strangers</p>
+				<a @*asp-controller="#" asp-action="#"*@ href="#" class="btn btn-primary" role="button">Get Started</a>
+			</div>
+		</div>
+	</div>
+	@*<div class="col-sm-6">
+		<div class="card mx-1 my-3">
+			<div class="card-body bg-light">
+				<h3 class="card-title">Checkers</h3>
+				<p class="card-text">Player Checkers Online</p>
+				<a asp-controller="#" asp-action="#" class="btn btn-primary" role="button">Get Started</a>
+			</div>
+		</div>
+	</div>*@
+</div>
+
+<h2 class="display-6">What is Bored with Web?</h2>
+<p>
+	Bored with Web is a website to chat and play games online with your friends, or other denizens of the internet. You can play with strangers from the
+	game lobby; or directly invite your friends for a more familiar challenge. Remember, Bored with Web is a place to play and have fun; if you encounter
+	any of the internet's less favourable types, destroy them in your match and move on.
+</p>
+
+<h2 class="display-6">Benefits of Logging In</h2>
+<p>
+	Registering an account with this site is not mandatory; we view websites that force their users to login as tedious. However, in our case, we offer
+	a heightened experience for those who login. The most basic benefit is the ability to specify your own username for use in our games and chatrooms.
+</p>
+<p>
+	When you login to our site, we will also store some gameplay statistics for you. Basic things, like how many times you've won or lost. In the case of simple
+	games, we may also offer you the ability to rewatch your own gameplay as a spectator. We will still temporarily store this same information for your session
+	as a guest if you do not login; but it will no longer be accessible when your guest session expires.
+</p>
