@@ -1,0 +1,10 @@
+﻿@model GameInfoViewModel
+
+<p class="card-text">@Model!.Info.Summary</p>
+<p class="card-text">
+	<small class="text-muted">
+		Required Players: @Model.Info.RequiredPlayerCount
+		<br>
+		Currently Playing: @Model.CurrentPlayerCount
+	</small>
+</p>
