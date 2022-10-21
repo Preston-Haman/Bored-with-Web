@@ -1,0 +1,19 @@
+﻿@model GameInfoViewModel
+
+<div>
+	@switch (Model!.ViewState)
+	{
+		case GameInfoViewState.SELECTION:
+			<a class="btn btn-info" role="button" asp-controller="Games" asp-action="#">More Details</a>
+			goto case GameInfoViewState.DESCRIPTION;
+		case GameInfoViewState.DESCRIPTION:
+			<a class="btn btn-info" role="button" asp-controller="Games" asp-action="#">Play Now</a>
+			break;
+		case GameInfoViewState.LOBBY:
+			<a class="btn btn-info" role="button" asp-controller="Games" asp-action="#">Create a Private Match</a>
+			<button id="ready-button" class="btn btn-info">Ready</button>
+			break;
+		default:
+			throw new NotImplementedException($"Unsupported {nameof(GameInfoViewState)} argument: {Model.ViewState}");
+	}
+</div>

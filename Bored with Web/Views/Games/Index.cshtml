@@ -1,0 +1,10 @@
+﻿@model IEnumerable<GameInfoViewModel>
+
+@{
+	ViewData["Title"] = "Games";
+}
+
+@if (Model is not null) foreach (GameInfoViewModel item in Model)
+{
+	<partial name="_GameInfo.cshtml" model="item" />
+}
