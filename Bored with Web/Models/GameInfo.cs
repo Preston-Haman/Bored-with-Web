@@ -61,15 +61,33 @@ namespace Bored_with_Web.Models
 			RequiredPlayerCount = 2
 		};
 
+		public static IEnumerable<GameInfo> AllGames { get; }
+
+		private static readonly Dictionary<string, GameInfo> gamesByTitle;
+
+		static CanonicalGames()
+		{
+			gamesByTitle = new();
+			AllGames = GetAll();
+		}
+
+		public static GameInfo? GetGameInfoByTitle(string title)
+		{
+			gamesByTitle.TryGetValue(title, out GameInfo? game);
+			return game;
+		}
+
 		//Just in case this junk never finds its way into static data...
-		public static IEnumerable<GameInfo> GetAll()
+		private static IEnumerable<GameInfo> GetAll()
 		{
 			List<GameInfo> ret = new();
+			
 			foreach (PropertyInfo prop in typeof(CanonicalGames).GetProperties(BindingFlags.Public | BindingFlags.Static))
 			{
 				if (prop.GetValue(null) is GameInfo game)
 				{
 					ret.Add(game);
+					gamesByTitle.Add(game.Title, game);
 				}
 			}
 			return ret;
