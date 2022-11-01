@@ -4,13 +4,13 @@
 	@switch (Model!.ViewState)
 	{
 		case GameInfoViewState.SELECTION:
-			<a class="btn btn-info" role="button" asp-controller="Games" asp-action="Detail" asp-route-id="@Model.Info.Title">More Details</a>
+			<a class="btn btn-info" role="button" asp-controller="Games" asp-action="Detail" asp-route-id="@Model.Info.RouteId">More Details</a>
 			goto case GameInfoViewState.DESCRIPTION;
 		case GameInfoViewState.DESCRIPTION:
-			<a class="btn btn-info" role="button" asp-controller="Games" asp-action="#" asp-route-id="@Model.Info.Title">Play Now</a>
+			<a class="btn btn-info" role="button" asp-controller="Games" asp-action="#" asp-route-id="@Model.Info.RouteId">Play Now</a>
 			break;
 		case GameInfoViewState.LOBBY:
-			<a class="btn btn-info" role="button" asp-controller="Games" asp-action="#" asp-route-id="@Model.Info.Title">Create a Private Match</a>
+			<a class="btn btn-info" role="button" asp-controller="Games" asp-action="#" asp-route-id="@Model.Info.RouteId">Create a Private Match</a>
 			<button id="ready-button" class="btn btn-info">Ready</button>
 			break;
 		default:

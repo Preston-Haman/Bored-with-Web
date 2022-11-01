@@ -20,13 +20,13 @@ namespace Bored_with_Web.Controllers
 
 		public IActionResult Detail(string? id)
 		{
-			//id is title of the game
+			//id is RouteId of the game
 			if (id is null)
 			{
 				return RedirectToAction(nameof(Index));
 			}
 
-			GameInfo? game = CanonicalGames.GetGameInfoByTitle(id);
+			GameInfo? game = CanonicalGames.GetGameInfoByRouteId(id);
 			if (game is null)
 			{
 				return NotFound();

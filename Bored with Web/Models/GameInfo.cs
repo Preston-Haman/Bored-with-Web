@@ -6,6 +6,8 @@ namespace Bored_with_Web.Models
 	{
 		public string Title { get; set; } = null!;
 
+		public string RouteId { get { return Title.Replace(' ', '-'); } }
+
 		public string ImageURL { get; set; } = "https://via.placeholder.com/512";
 
 		public string Summary { get; set; } = null!;
@@ -71,9 +73,9 @@ namespace Bored_with_Web.Models
 			AllGames = GetAll();
 		}
 
-		public static GameInfo? GetGameInfoByTitle(string title)
+		public static GameInfo? GetGameInfoByRouteId(string routeId)
 		{
-			gamesByTitle.TryGetValue(title, out GameInfo? game);
+			gamesByTitle.TryGetValue(routeId, out GameInfo? game);
 			return game;
 		}
 
@@ -87,7 +89,7 @@ namespace Bored_with_Web.Models
 				if (prop.GetValue(null) is GameInfo game)
 				{
 					ret.Add(game);
-					gamesByTitle.Add(game.Title, game);
+					gamesByTitle.Add(game.RouteId, game);
 				}
 			}
 			return ret;
