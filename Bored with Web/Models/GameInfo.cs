@@ -6,6 +6,8 @@ namespace Bored_with_Web.Models
 	{
 		public string Title { get; set; } = null!;
 
+		public string RouteId { get { return Title.Replace(' ', '-'); } }
+
 		public string ImageURL { get; set; } = "https://via.placeholder.com/512";
 
 		public string Summary { get; set; } = null!;
@@ -61,15 +63,33 @@ namespace Bored_with_Web.Models
 			RequiredPlayerCount = 2
 		};
 
+		public static IEnumerable<GameInfo> AllGames { get; }
+
+		private static readonly Dictionary<string, GameInfo> gamesByTitle;
+
+		static CanonicalGames()
+		{
+			gamesByTitle = new();
+			AllGames = GetAll();
+		}
+
+		public static GameInfo? GetGameInfoByRouteId(string routeId)
+		{
+			gamesByTitle.TryGetValue(routeId, out GameInfo? game);
+			return game;
+		}
+
 		//Just in case this junk never finds its way into static data...
-		public static IEnumerable<GameInfo> GetAll()
+		private static IEnumerable<GameInfo> GetAll()
 		{
 			List<GameInfo> ret = new();
+			
 			foreach (PropertyInfo prop in typeof(CanonicalGames).GetProperties(BindingFlags.Public | BindingFlags.Static))
 			{
 				if (prop.GetValue(null) is GameInfo game)
 				{
 					ret.Add(game);
+					gamesByTitle.Add(game.RouteId, game);
 				}
 			}
 			return ret;
