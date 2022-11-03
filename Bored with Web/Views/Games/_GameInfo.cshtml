@@ -71,6 +71,28 @@
 		</div>
 		break;
 	case GameInfoViewState.LOBBY:
+		<div class="card mb-3 border-info" style="max-width: 800px;">
+			<div class="container row" style="padding: 10px 0px 10px 10px;">
+				<div class="col-md-4">
+					<img src="@Model.Info.ImageURL" class="img-fluid rounded" alt="An image depicting @Model.Info.Title">
+				</div>
+				<div class="col-md-8" style="padding-right: 0;">
+					<div class="card-body">
+						<div class="card-title">
+							<h2>@Model.Info.Title</h2>
+						</div>
+						<hr>
+						<div>
+							<partial name="_GameInfoOverview.cshtml" model="@Model" />
+						</div>
+					</div>
+					<div style="position: absolute; bottom: 10px; right: 16px;">
+						<partial name="_GameInfoButtons.cshtml" model="@Model" />
+					</div>
+				</div>
+			</div>
+		</div>
+		break;
 	default:
 		throw new NotImplementedException($"Unsupported {nameof(GameInfoViewState)} argument: {Model.ViewState}");
 }
