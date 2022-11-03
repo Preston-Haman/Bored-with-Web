@@ -1,0 +1,100 @@
+﻿@model GameInfoViewModel
+
+@{
+	ViewData["Title"] = $"{Model!.Info.Title} Lobby";
+}
+
+<partial name="_GameInfo.cshtml" model="@Model" />
+<main>
+	<!-- TODO: Control Colour with CSS classes through custom script -->
+	<div class="mb-2 border border-info rounded" style="text-align: center; max-width: 800px; margin-top: 1.5em;">
+		<!-- TODO: Change text based on current connection state -->
+		<p style="margin: 0.2em;">Connecting...</p>
+	</div>
+	
+	<div class="ms-0 me-0 mb-1 row bg-light" style="max-width: 800px; min-height: 22em;">
+		<!-- TODO: When a player hovers over an li in player-list, adjust the background to highlight them -->
+		<div id="player-list" class="pe-0 col-md-4 border border-info rounded user-select-none" style="padding-left: 0.5em;">
+			<div class="position-relative">
+				<div class="ps-1 py-2 position-absolute start-0 end-0 top-0 bottom-0" style="min-height: 22em; overflow: auto;">
+					<div id="in-progress">
+						<div class="user-select-none" role="button" data-bs-toggle="collapse" data-bs-target=".progress-list">
+							<h6 style="display: inline;">Games in Progress</h6>
+							<div style="float: right;">
+								<svg class="collapse progress-list bi bi-caret-left-fill" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+									<path d="m3.86 8.753 5.482 4.796c.646.566 1.658.106 1.658-.753V3.204a1 1 0 0 0-1.659-.753l-5.48 4.796a1 1 0 0 0 0 1.506z" />
+								</svg>
+								<svg class="collapse progress-list show bi bi-caret-down-fill" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+									<path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z" />
+								</svg>
+							</div>
+						</div>
+						<ul class="progress-list ms-1 ps-4 text-muted collapse show" style="list-style-type: none;">
+							<!-- TODO: Allow the player to spectate these -->
+							<li role="button">Player1 vs Player2</li>
+							<li role="button">Player3 vs Player4</li>
+						</ul>
+					</div>
+					<div id="lobby-players">
+						<div class="user-select-none" role="button" data-bs-toggle="collapse" data-bs-target=".player-list">
+							<h6 style="display: inline;">Players in Lobby</h6>
+							<div style="float: right;">
+								<svg class="collapse player-list bi bi-caret-left-fill" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+									<path d="m3.86 8.753 5.482 4.796c.646.566 1.658.106 1.658-.753V3.204a1 1 0 0 0-1.659-.753l-5.48 4.796a1 1 0 0 0 0 1.506z" />
+								</svg>
+								<svg class="collapse player-list show bi bi-caret-down-fill" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+									<path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z" />
+								</svg>
+							</div>
+						</div>
+						<ul class="player-list ms-1 ps-4 text-muted collapse show" style="list-style-type: none;">
+							<li>Player5</li>
+							<!-- TODO: Make the user's player entry standout -->
+							<li class="active-player">Player6</li>
+							<li>Player7</li>
+							<li>Player8</li>
+							<li>Player9</li>
+							<li>Player10</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-8 position-relative" style="padding-right: 0;">
+			<div class="border border-info rounded position-absolute start-0 end-0 top-0" style="bottom: 3em; padding: 0.5em; margin-left: 10px; overflow: auto;">
+				<ul class="ms-0 mb-0 ps-1" style="list-style-type: none;">
+					<!-- TODO: Populate this area with messages sent by real players -->
+					<!-- TODO: When a new message is sent, scroll to the bottom so the new message is visible unless the user has scrolled up -->
+					<!-- TODO: Convert the colon-space into a CSS player-chat-label:after selector using "content: \0020;" -->
+					<li><span class="player-chat-label user-select-none">Player1: </span><span class="text-muted">Hey, man; you ready to play a round?</span></li>
+					<li><span class="player-chat-label user-select-none">Player2: </span><span class="text-muted">Yeah, I'm good to go; let's do it.</span></li>
+					<li><span class="player-chat-label user-select-none">Player1: </span><span class="text-muted">Alright, sure; let me just get a drink.</span></li>
+					<li><span class="player-chat-label user-select-none">Player2: </span><span class="text-muted">Sure, let me know when you're back.</span></li>
+					<li><span class="player-chat-label user-select-none">Player1: </span><span class="text-muted">I'm back. You still here?</span></li>
+					<li><span class="player-chat-label user-select-none">Player2: </span><span class="text-muted">Yeah, what'd you get?</span></li>
+					<li><span class="player-chat-label user-select-none">Player1: </span><span class="text-muted">Just some water.</span></li>
+					<li><span class="player-chat-label user-select-none">Player2: </span><span class="text-muted">Oh, nice. Ready to play?</span></li>
+					<li><span class="player-chat-label user-select-none">Player1: </span><span class="text-muted">Yep. Here we go.</span></li>
+					<li><span class="player-chat-label user-select-none">Player3: </span><span class="text-muted">Anyone else wanna play?</span></li>
+					<li><span class="player-chat-label user-select-none">Player4: </span><span class="text-muted">Yeah, I want to play.</span></li>
+					<li><span class="player-chat-label user-select-none">Player3: </span><span class="text-muted">Sweet, let's do it. Custom rules good?</span></li>
+					<li><span class="player-chat-label user-select-none">Player4: </span><span class="text-muted">Bruh. You can set custom rules???</span></li>
+					<li><span class="player-chat-label user-select-none">Player3: </span><span class="text-muted">Just the size of the board, you know?</span></li>
+					<li><span class="player-chat-label user-select-none">Player4: </span><span class="text-muted">I didn't know you could do that here...</span></li>
+					<li><span class="player-chat-label user-select-none">Player3: </span><span class="text-muted">Well, I guess it's not fully implemented.</span></li>
+					<li><span class="player-chat-label user-select-none">Player4: </span><span class="text-muted">Oh. Lame. Well, I'm fine with the standard rules.</span></li>
+					<li><span class="player-chat-label user-select-none">Player3: </span><span class="text-muted">Yeah, sure; let's do that.</span></li>
+					<li><span class="player-chat-label user-select-none">Player4: </span><span class="text-muted">Cool.</span></li>
+					<li><span class="player-chat-label user-select-none">Player9: </span><span class="text-muted">Anyone else actively here?</span></li>
+					<li><span class="player-chat-label user-select-none">Player10: </span><span class="text-muted">Yeah, just give me a minute to get sorted.</span></li>
+					<li><span class="active-player player-chat-label user-select-none">Player6: </span><span class="text-muted">I'm back; anyone else ready to go?</span></li>
+				</ul>
+			</div>
+			<input class="bg-light border border-info rounded position-absolute bottom-0 start-0 end-0" type="text" name="chat-input" id="chat-input" placeholder="Send a message..." style="padding: 0.5em; margin-left: 10px;">
+		</div>
+	</div>
+	<div class="ms-0 position-relative" style="padding: 20px; margin: 0px 12px 10px 12px; max-width: 800px;">
+		<button class="btn btn-secondary position-absolute start-0 top-0">Disconnect</button>
+		<button class="btn btn-secondary position-absolute end-0 top-0">Send</button>
+	</div>
+</main>
