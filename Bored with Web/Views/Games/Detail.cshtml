@@ -1,3 +1,7 @@
 ﻿@model GameInfoViewModel
 
+@{
+	ViewData["Title"] = $"{Model!.Info.Title} Details";
+}
+
 <partial name="_GameInfo.cshtml" model="@Model" />
