@@ -1,0 +1,35 @@
+﻿@model GameInfo
+
+@{
+	ViewData["Title"] = $"{Model!.Title}";
+}
+
+@section Head
+{
+	@switch (Model.Title) {
+		case "Connect Four":
+			<style>
+				.c4-board {
+					background-color: rgb(53, 106, 160);
+				}
+				.c4-board-slot {
+					background-color: gainsboro;
+				}
+			</style>
+			break;
+	}
+}
+
+@switch (Model.Title) {
+	case "Connect Four":
+		<partial name="_ConnectFourBoard.cshtml" />
+		break;
+}
+
+@section Scripts
+{
+	@{
+		string src = $"{Model.RouteId}.js";
+		<script src="@src"></script>
+	}
+}
