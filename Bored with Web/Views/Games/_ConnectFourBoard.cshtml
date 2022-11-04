@@ -1,46 +1,25 @@
-﻿@* This view will need to be updated if we ever allow non-standard board sizes. Specifically, the height/width of the various parts of the board. *@
-@{
+﻿@{
 	int rows = ((int?) ViewData["rows"]) ?? 6;
 	int cols = ((int?) ViewData["cols"]) ?? 7;
 }
 
-<main class="user-select-none" style="margin: 10px;">
-	<div class="c4-board px-1 py-0 m-0 row border-start border-end border-top border-bottom border-info rounded-top" style="height: max-content; width: max-content;">
-		@for (int i = 0; i < cols; i++)
-		{
-			<button id="btn-col-@i" class="c4-slot-btn mx-1 my-1 btn btn-secondary" data-col="@i" style="width: 5em;"></button>
-		}
-	</div>
-	<div class="c4-board px-1 py-0 m-0 row border-start border-end border-info" style="height: max-content; width: max-content;">
-		@for (int i = 0; i < cols; i++)
-		{
-			string id = $"slot-x{i}-y{cols - 1}";
-			<div id="@id" class="c4-board-slot mx-1 my-1 border border-info rounded-circle" style="height: 5em; width: 5em; display: inline-block;"></div>
-		}
-	</div>
-	@for (int i = 1; i < rows - 1; i++)
+<main class="c4-board">
+	@for (int i = 0; i < cols; i++)
 	{
-		<div class="c4-board px-1 py-0 m-0 row border-start border-end border-info" style="height: max-content; width: max-content;">
-			@for (int j = 0; j < cols; j++)
-			{
-				string id = $"slot-x{i}-y{cols - 1 - j}";
-				<div id="@id" class="c4-board-slot mx-1 my-1 border border-info rounded-circle" style="height: 5em; width: 5em; display: inline-block;"></div>
-			}
-		</div>
+		<button id="btn-col-@i" class="c4-slot-btn m-1 btn btn-secondary" data-col="@i"></button>
 	}
-	<div class="c4-board px-1 py-0 m-0 row border-start border-end border-bottom border-info rounded-bottom" style="height: max-content; width: max-content;">
-		@for (int i = 0; i < cols; i++)
+
+	<div class="c4-cosmetic"></div>
+
+	@for (int row = rows - 1; row >= 0; row--)
+	{
+		@for (int col = 0; col < cols; col++)
 		{
-			string id = $"slot-x{i}-y{0}";
-			<div id="@id" class="c4-board-slot mx-1 my-1 border border-info rounded-circle" style="height: 5em; width: 5em; display: inline-block;"></div>
+			string id = $"slot-x{col}-y{row}";
+			<div id="@id" class="c4-slot"></div>
 		}
-	</div>
-	<div class="px-1 py-0 m-0 row position-relative" style="height: max-content; width: max-content;">
-		@for (int i = 0; i < cols; i++)
-		{
-			//This is a little weird; but it's the easiest way to get the right width from this...
-			<div class="mx-1 my-0" style="height: 0px; width: 5em; display: inline-block;"></div>
-		}
-		<button id="btn-clear" class="px-1 my-1 mx-0 btn btn-secondary position-absolute start-0 end-0"></button>
-	</div>
+	}
+
+	<div class="c4-cosmetic"></div>
+	<button id="c4-clear-btn" class="btn btn-secondary"></button>
 </main>

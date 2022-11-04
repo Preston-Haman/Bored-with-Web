@@ -1,0 +1,26 @@
+﻿
+.c4-board {
+	display: grid;
+	box-sizing: content-box;
+	border: 2px solid rgb(10, 92, 122);
+	border-radius: 0.25em;
+	background-color: rgb(53, 106, 160);
+}
+
+.c4-cosmetic {
+	margin: 0.25em 0px;
+	border-top: 1px solid rgb(10, 92, 122);
+	grid-column: 1 / span 7;
+}
+
+.c4-slot {
+	margin: 0.125em;
+	border: 3px solid rgb(10, 92, 122);
+	border-radius: 50%;
+	background-color: gainsboro;
+}
+
+#c4-clear-btn {
+	margin: 0.125em 0.25em 0.25em 0.25em;
+	height: calc(1em - 0.125em - 0.25em);
+}
