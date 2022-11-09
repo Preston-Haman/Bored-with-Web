@@ -10,7 +10,6 @@
 .c4-cosmetic {
 	margin: 0.25em 0px;
 	border-top: 1px solid rgb(10, 92, 122);
-	grid-column: 1 / span 7;
 }
 
 .c4-slot {
