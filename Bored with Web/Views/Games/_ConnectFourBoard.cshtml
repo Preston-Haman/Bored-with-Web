@@ -1,0 +1,33 @@
+﻿@{
+	int rows = ((int?) ViewData["rows"]) ?? 6;
+	int cols = ((int?) ViewData["cols"]) ?? 7;
+
+	string player1 = ((string?) ViewData["player1"]) ?? "Player 1";
+	string player2 = ((string?) ViewData["player2"]) ?? "Player 2";
+}
+
+<div id="turn-indicator">
+	<h3 id="player-1" class="text-center text-muted">@player1</h3>
+	<h3 id="player-2" class="text-center text-muted">@player2</h3>
+</div>
+
+<main class="c4-board">
+	@for (int i = 0; i < cols; i++)
+	{
+		<button id="btn-col-@i" class="c4-slot-btn m-1 btn btn-secondary" data-col="@i"></button>
+	}
+
+	<div class="c4-cosmetic"></div>
+
+	@for (int row = rows - 1; row >= 0; row--)
+	{
+		@for (int col = 0; col < cols; col++)
+		{
+			string id = $"slot-x{col}-y{row}";
+			<div id="@id" class="c4-slot"></div>
+		}
+	}
+
+	<div class="c4-cosmetic"></div>
+	<button id="c4-clear-btn" class="btn btn-secondary"></button>
+</main>

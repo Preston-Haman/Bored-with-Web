@@ -1,0 +1,61 @@
+﻿@model GameInfo
+
+@{
+	ViewData["Title"] = $"{Model!.Title}";
+}
+
+@section Head
+{
+	@{
+		string style = $"{Model.RouteId}.css";
+		<link rel="stylesheet" href="~/css/@style">
+	}
+	
+	@switch (Model.Title) {
+		case "Connect Four":
+			int rows = ((int?) ViewData["rows"]) ?? 6;
+			int cols = ((int?) ViewData["cols"]) ?? 7;
+
+			<style>
+				#turn-indicator {
+					@* Same as c4-board width *@
+					width: calc(@cols * 5em);
+				}
+				
+				.c4-board {
+					@* The height and width are a ratio (rows:columns); plus some extra on height to accommodate the buttons *@
+					height: calc(1em + 0.25em + calc(@rows * 5em) + 0.25em + 1.25em);
+					width: calc(@cols * 5em);
+
+					grid-template-rows: 1em 0.25em repeat(@rows, 5em) 0.25em 1.25em;
+					grid-template-columns: repeat(@cols, 5em);
+				}
+
+				#c4-clear-btn {
+					@* The same as c4-board height, minus what's used by the button *@
+					top: calc(1em + 0.25em + calc(@rows * 5em) + 0.25em);
+					grid-column: 1 / span @cols;
+				}
+
+				.c4-cosmetic {
+					grid-column: 1 / span @cols;
+				}
+			</style>
+			break;
+	}
+}
+
+@switch (Model.Title) {
+	case "Connect Four":
+		<h1>@Model.Title</h1>
+		<partial name="_ConnectFourBoard.cshtml" />
+		break;
+}
+
+@section Scripts
+{
+	@{
+		string src = $"{Model.RouteId}.js";
+		<script src="~/js/@src"></script>
+	}
+}
