@@ -17,6 +17,11 @@
 			int cols = ((int?) ViewData["cols"]) ?? 7;
 
 			<style>
+				#turn-indicator {
+					@* Same as c4-board width *@
+					width: calc(@cols * 5em);
+				}
+				
 				.c4-board {
 					@* The height and width are a ratio (rows:columns); plus some extra on height to accommodate the buttons *@
 					height: calc(1em + 0.25em + calc(@rows * 5em) + 0.25em + 1.25em);
@@ -42,6 +47,7 @@
 
 @switch (Model.Title) {
 	case "Connect Four":
+		<h1>@Model.Title</h1>
 		<partial name="_ConnectFourBoard.cshtml" />
 		break;
 }

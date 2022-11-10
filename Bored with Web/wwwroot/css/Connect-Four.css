@@ -23,3 +23,32 @@
 	margin: 0.125em 0.25em 0.25em 0.25em;
 	height: calc(1em - 0.125em - 0.25em);
 }
+
+.c4-slot-player-1, #player-1 {
+	background-color: rgb(142, 45, 36);
+}
+
+.c4-slot-player-2, #player-2 {
+	background-color: rgb(202, 178, 68);
+}
+
+#turn-indicator {
+	display: grid;
+	box-sizing: content-box;
+	/* 2px margin matches the border of the board */
+	margin: 2px 2px 0.5em 2px;
+	grid-template-columns: 1fr 1fr;
+}
+
+#turn-indicator > h3 {
+	display: inline-block;
+	border: 1px solid black;
+	border-radius: 0.75em;
+	padding: 0.25em;
+	margin: 0px 0.125em;
+}
+
+.active-player {
+	border: 3px solid lime !important;
+	color: white;
+}

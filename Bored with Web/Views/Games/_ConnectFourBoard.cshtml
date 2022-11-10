@@ -1,7 +1,15 @@
 ﻿@{
 	int rows = ((int?) ViewData["rows"]) ?? 6;
 	int cols = ((int?) ViewData["cols"]) ?? 7;
+
+	string player1 = ((string?) ViewData["player1"]) ?? "Player 1";
+	string player2 = ((string?) ViewData["player2"]) ?? "Player 2";
 }
+
+<div id="turn-indicator">
+	<h3 id="player-1" class="text-center text-muted">@player1</h3>
+	<h3 id="player-2" class="text-center text-muted">@player2</h3>
+</div>
 
 <main class="c4-board">
 	@for (int i = 0; i < cols; i++)
