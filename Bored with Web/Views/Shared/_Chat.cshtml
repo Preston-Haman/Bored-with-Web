@@ -1,0 +1,20 @@
+﻿@*
+	This partial view should be included in the Head section of the full view.
+	The full view should include the following:
+		A text input element marked with an id of chat-input.
+		A button element marked with an id of chat-send.
+		A ul element marked with an id of chat-messages.
+*@
+
+@using Bored_with_Web.Hubs
+
+<link rel="stylesheet" href="~/css/chat.css">
+<script src="~/js/signalr/dist/browser/signalr.js"></script>
+
+<script>
+	@{ string url = $"/{nameof(ChatHub)}"; }
+	const CHAT_CONNECTION_BUILDER = new signalR.HubConnectionBuilder().withUrl("@url");
+	const CHAT_RECEIVE_MESSAGE = "@nameof(IChatClient.ReceiveMessage)";
+	const CHAT_SEND_MESSAGE = "@nameof(ChatHub.SendMessage)";
+</script>
+<script src="~/js/hubs/chat.js"></script>

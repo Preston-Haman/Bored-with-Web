@@ -1,0 +1,13 @@
+﻿
+.chat-user-label:after {
+	content: ":\0020";
+}
+
+.chat-user-label {
+	color: gray;
+	font-weight: bold;
+}
+
+.chat-active-user {
+	color: seagreen !important;
+}

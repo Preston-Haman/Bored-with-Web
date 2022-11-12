@@ -4,6 +4,11 @@
 	ViewData["Title"] = $"{Model!.Info.Title} Lobby";
 }
 
+@section Head
+{
+	<partial name="_Chat" />
+}
+
 <partial name="_GameInfo.cshtml" model="@Model" />
 <main>
 	<!-- TODO: Control Colour with CSS classes through custom script -->
@@ -13,6 +18,7 @@
 	</div>
 	
 	<div class="ms-0 me-0 mb-1 row bg-light" style="max-width: 800px; min-height: 22em;">
+		<!-- TODO: Populate this area based on real-time data from the server -->
 		<!-- TODO: When a player hovers over an li in player-list, adjust the background to highlight them -->
 		<div id="player-list" class="pe-0 col-md-4 border border-info rounded user-select-none" style="padding-left: 0.5em;">
 			<div class="position-relative">
@@ -50,7 +56,7 @@
 						<ul class="player-list ms-1 ps-4 text-muted collapse show" style="list-style-type: none;">
 							<li>Player5</li>
 							<!-- TODO: Make the user's player entry standout -->
-							<li class="active-player">Player6</li>
+							<li class="lobby-active-user">Player6</li>
 							<li>Player7</li>
 							<li>Player8</li>
 							<li>Player9</li>
@@ -62,39 +68,13 @@
 		</div>
 		<div class="col-md-8 position-relative" style="padding-right: 0;">
 			<div class="border border-info rounded position-absolute start-0 end-0 top-0" style="bottom: 3em; padding: 0.5em; margin-left: 10px; overflow: auto;">
-				<ul class="ms-0 mb-0 ps-1" style="list-style-type: none;">
-					<!-- TODO: Populate this area with messages sent by real players -->
-					<!-- TODO: When a new message is sent, scroll to the bottom so the new message is visible unless the user has scrolled up -->
-					<!-- TODO: Convert the colon-space into a CSS player-chat-label:after selector using "content: \0020;" -->
-					<li><span class="player-chat-label user-select-none">Player1: </span><span class="text-muted">Hey, man; you ready to play a round?</span></li>
-					<li><span class="player-chat-label user-select-none">Player2: </span><span class="text-muted">Yeah, I'm good to go; let's do it.</span></li>
-					<li><span class="player-chat-label user-select-none">Player1: </span><span class="text-muted">Alright, sure; let me just get a drink.</span></li>
-					<li><span class="player-chat-label user-select-none">Player2: </span><span class="text-muted">Sure, let me know when you're back.</span></li>
-					<li><span class="player-chat-label user-select-none">Player1: </span><span class="text-muted">I'm back. You still here?</span></li>
-					<li><span class="player-chat-label user-select-none">Player2: </span><span class="text-muted">Yeah, what'd you get?</span></li>
-					<li><span class="player-chat-label user-select-none">Player1: </span><span class="text-muted">Just some water.</span></li>
-					<li><span class="player-chat-label user-select-none">Player2: </span><span class="text-muted">Oh, nice. Ready to play?</span></li>
-					<li><span class="player-chat-label user-select-none">Player1: </span><span class="text-muted">Yep. Here we go.</span></li>
-					<li><span class="player-chat-label user-select-none">Player3: </span><span class="text-muted">Anyone else wanna play?</span></li>
-					<li><span class="player-chat-label user-select-none">Player4: </span><span class="text-muted">Yeah, I want to play.</span></li>
-					<li><span class="player-chat-label user-select-none">Player3: </span><span class="text-muted">Sweet, let's do it. Custom rules good?</span></li>
-					<li><span class="player-chat-label user-select-none">Player4: </span><span class="text-muted">Bruh. You can set custom rules???</span></li>
-					<li><span class="player-chat-label user-select-none">Player3: </span><span class="text-muted">Just the size of the board, you know?</span></li>
-					<li><span class="player-chat-label user-select-none">Player4: </span><span class="text-muted">I didn't know you could do that here...</span></li>
-					<li><span class="player-chat-label user-select-none">Player3: </span><span class="text-muted">Well, I guess it's not fully implemented.</span></li>
-					<li><span class="player-chat-label user-select-none">Player4: </span><span class="text-muted">Oh. Lame. Well, I'm fine with the standard rules.</span></li>
-					<li><span class="player-chat-label user-select-none">Player3: </span><span class="text-muted">Yeah, sure; let's do that.</span></li>
-					<li><span class="player-chat-label user-select-none">Player4: </span><span class="text-muted">Cool.</span></li>
-					<li><span class="player-chat-label user-select-none">Player9: </span><span class="text-muted">Anyone else actively here?</span></li>
-					<li><span class="player-chat-label user-select-none">Player10: </span><span class="text-muted">Yeah, just give me a minute to get sorted.</span></li>
-					<li><span class="active-player player-chat-label user-select-none">Player6: </span><span class="text-muted">I'm back; anyone else ready to go?</span></li>
-				</ul>
+				<ul id="chat-messages" class="ms-0 mb-0 ps-1" style="list-style-type: none;"></ul>
 			</div>
-			<input class="bg-light border border-info rounded position-absolute bottom-0 start-0 end-0" type="text" name="chat-input" id="chat-input" placeholder="Send a message..." style="padding: 0.5em; margin-left: 10px;">
+			<input id="chat-input" disabled class="bg-light border border-info rounded position-absolute bottom-0 start-0 end-0" type="text" name="chat-input" placeholder="Send a message..." style="padding: 0.5em; margin-left: 10px;">
 		</div>
 	</div>
 	<div class="ms-0 position-relative" style="padding: 20px; margin: 0px 12px 10px 12px; max-width: 800px;">
-		<button class="btn btn-secondary position-absolute start-0 top-0">Disconnect</button>
-		<button class="btn btn-secondary position-absolute end-0 top-0">Send</button>
+		<button id="lobby-disconnect" class="btn btn-secondary position-absolute start-0 top-0">Disconnect</button>
+		<button id="chat-send" disabled class="btn btn-secondary position-absolute end-0 top-0">Send</button>
 	</div>
 </main>

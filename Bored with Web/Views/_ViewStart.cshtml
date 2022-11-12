@@ -1,3 +1,14 @@
-﻿@{
+﻿@inject IHttpContextAccessor httpContext
+@{
     Layout = "_Layout";
+
+    //This is here because I want all normal connections to the website to result in a guest name being applied to the session.
+    HttpContext? context = httpContext.HttpContext;
+
+    if (context is not null) {
+        if (context.Session.GetUsername() is null)
+        {
+            context.Session.SetUsername(GuestNameGenerator.GenerateGuestName());
+        }
+    }
 }
