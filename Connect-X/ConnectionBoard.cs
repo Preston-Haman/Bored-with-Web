@@ -21,50 +21,74 @@ namespace Connect_X
 		///	[6] [7] [8]	<br></br>
 		///	[3] [4] [5]	<br></br>
 		///	[0] [1] [2]	<br></br>
+		///	<br></br>
+		///	The number of tokens currently occupying slots of the board is represented by <see cref="PlayedTokenCount"/>.
 		/// </summary>
-		public BoardToken[] Slots { get; }
+		public BoardToken[] Slots { get; private set; }
 
 		/// <summary>
 		/// The number of rows present on this board.
 		/// </summary>
-		public int Rows { get; }
+		public byte Rows { get; }
 
 		/// <summary>
 		/// The number of columns present on this board.
 		/// </summary>
-		public int Columns { get; }
+		public byte Columns { get; }
+
+		/// <summary>
+		/// The minimum length of a sequence of tokens for it to be considered valid.
+		/// </summary>
+		public byte MinimumSequenceLength { get; }
+
+		/// <summary>
+		/// The number of tokens currently placed on the board.
+		/// </summary>
+		public int PlayedTokenCount { get; private set; } = 0;
+
+		/// <summary>
+		/// A convenience property to check if the board has any remaining slots available for play.
+		/// <br></br><br></br>
+		/// If the board has zero remaining empty slots, this will be true.
+		/// </summary>
+		public bool IsFull
+		{
+			get { return PlayedTokenCount == Slots.Length; }
+		}
 
 		/// <summary>
 		/// Creates a square board with the specified number of rows and columns.
 		/// </summary>
 		/// <param name="rows">The number of rows for this board.</param>
 		/// <param name="columns">The number of columns for this board.</param>
-		public ConnectionBoard(int rows, int columns)
+		/// <param name="sequenceLength">The minimum length of a connection sequence for it to be considered valid.</param>
+		public ConnectionBoard(byte rows, byte columns, byte sequenceLength)
 		{
 			Rows = rows;
 			Columns = columns;
 			Slots = new BoardToken[rows * columns];
+			MinimumSequenceLength = sequenceLength;
 		}
 
 		/// <summary>
-		/// Calculates a token index based on the given <paramref name="row"/> and <paramref name="column"/> coordinate.
-		/// The coordinates are zero-based.
-		/// <br></br><br></br>
-		/// If invalid values are given, an <see cref="ArgumentOutOfRangeException"/> is thrown.
+		/// Clears the <see cref="Slots"/> of the board.
 		/// </summary>
-		/// <param name="row">The row of interest.</param>
-		/// <param name="column">The column of interest.</param>
-		/// <returns>The token index for a token at the given <paramref name="row"/> and <paramref name="column"/> of the board.</returns>
-		/// <exception cref="ArgumentOutOfRangeException">If the given <paramref name="row"/> or <paramref name="column"/> is invalid.</exception>
-		public int? GetTokenIndexAtLocation(int row, int column)
+		public void Clear()
 		{
-			if (row >= Rows)
-				throw new ArgumentOutOfRangeException(nameof(row), "The given row location is invalid.");
+			Slots = new BoardToken[Rows * Columns];
+			PlayedTokenCount = 0;
+		}
 
-			if (column >= Columns)
-				throw new ArgumentOutOfRangeException(nameof(column), "The given column location is invalid.");
-
-			return (Columns * row) + column;
+		/// <summary>
+		/// Returns the <see cref="BoardToken"/> at the specified location on the board.
+		/// </summary>
+		/// <param name="row">The board row of interest.</param>
+		/// <param name="column">The board column of interest.</param>
+		/// <returns>The <see cref="BoardToken"/> at the specified <paramref name="row"/> and <paramref name="column"/>.</returns>
+		/// <exception cref="ArgumentOutOfRangeException">If the given <paramref name="row"/> or <paramref name="column"/> is invalid.</exception>
+		public BoardToken GetTokenAtLocation(int row, int column)
+		{
+			return Slots[GetTokenIndexAtLocation(row, column)];
 		}
 
 		/// <summary>
@@ -76,9 +100,15 @@ namespace Connect_X
 		/// <param name="row">The row of interest.</param>
 		/// <param name="column">The column of interest.</param>
 		/// <exception cref="ArgumentOutOfRangeException">If the given <paramref name="row"/> or <paramref name="column"/> is invalid.</exception>
-		public void SetToken(BoardToken token, int row, int column)
+		public void SetTokenAtLocation(BoardToken token, int row, int column)
 		{
-			Slots[(int)GetTokenIndexAtLocation(row, column)!] = token;
+			int tokenIndex = GetTokenIndexAtLocation(row, column);
+
+			if (Slots[tokenIndex] != token)
+			{
+				Slots[tokenIndex] = token;
+				PlayedTokenCount += token == BoardToken.None ? -1 : 1;
+			}
 		}
 
 		/// <summary>
@@ -92,35 +122,34 @@ namespace Connect_X
 		/// <exception cref="ArgumentOutOfRangeException">If the given <paramref name="row"/> or <paramref name="column"/> is invalid.</exception>
 		public bool IsTokenSlotAvailable(int row, int column)
 		{
-			return Slots[(int)GetTokenIndexAtLocation(row, column)!] == BoardToken.None;
+			return Slots[GetTokenIndexAtLocation(row, column)] == BoardToken.None;
 		}
 
 		/// <summary>
-		/// Checks for a sequence of tokens touching the given <paramref name="tokenIndex"/> in any <see cref="BoardDirection"/>.
-		/// A valid sequence is considered to be a chain of adjacent tokens of the same type reaching the specified
-		/// <paramref name="sequenceLength"/>. Only one sequence has to be present for this method to return true. If no
-		/// such sequence is present on the board, then false is returned.
+		/// Checks for a sequence of tokens touching the token specified by the given <paramref name="row"/> and <paramref name="column"/>
+		/// in any <see cref="BoardDirection"/>. A valid sequence is considered to be a chain of adjacent tokens, of the same type,
+		/// reaching the specified <see cref="MinimumSequenceLength"/>. Only one sequence has to be present for this method to return
+		/// true. If no such sequence is present on the board at this location, then false is returned.
 		/// </summary>
-		/// <param name="tokenIndex">A valid <see cref="Slots"/> index to check for a sequence at.</param>
-		/// <param name="sequenceLength">The required minimum length of the sequence.</param>
+		/// <param name="row">The row of interest.</param>
+		/// <param name="column">The column of interest.</param>
 		/// <returns>True if a valid sequence was discovered at the given location, false otherwise.</returns>
-		/// <exception cref="ArgumentException">If the <paramref name="tokenIndex"/> contains <see cref="BoardToken.None"/>.</exception>
-		/// <exception cref="ArgumentOutOfRangeException">If the <paramref name="tokenIndex"/> is invalid.</exception>
-		public bool HasTokenSequenceAtLocation(int tokenIndex, int sequenceLength)
+		/// <exception cref="ArgumentOutOfRangeException">If the given <paramref name="row"/> or <paramref name="column"/> is invalid.</exception>
+		/// <exception cref="ArgumentException">If the specified location contains <see cref="BoardToken.None"/>.</exception>
+		public bool HasTokenSequenceAtLocation(int row, int column)
 		{
-			//Throw exception if input is invalid.
-			_ = IsTokenIndexValid(tokenIndex);
-
+			int tokenIndex = GetTokenIndexAtLocation(row, column);
+			
 			if (Slots[tokenIndex] == BoardToken.None)
-				throw new ArgumentException("The specified token index does not contain a player token.", nameof(tokenIndex));
+				throw new ArgumentException("The specified location does not contain a player token.");
 
 			BoardDirection[] directions = { BoardDirection.LEFT, BoardDirection.DOWN_LEFT, BoardDirection.DOWN, BoardDirection.DOWN_RIGHT };
 
 			foreach (BoardDirection direction in directions)
 			{
 				//Assuming this token was just played, we only care about tokens that would require our token to be connected to form a valid sequence.
-				int furthestIndexOfInterest = GetTokenIndexInDirectionFrom(direction, tokenIndex, sequenceLength - 1);
-				if (HasTokenSequenceAtLocation(Slots[tokenIndex], direction.GetOpposite(), furthestIndexOfInterest, sequenceLength))
+				int furthestIndexOfInterest = GetTokenIndexInDirectionFrom(direction, tokenIndex, MinimumSequenceLength - 1);
+				if (HasTokenSequenceAtLocation(Slots[tokenIndex], direction.GetOpposite(), furthestIndexOfInterest))
 				{
 					return true;
 				}
@@ -140,20 +169,19 @@ namespace Connect_X
 		/// <param name="startingTokenIndex">The first token to examine as a potential member of the sequence.</param>
 		/// <param name="sequenceLength">The required minimum length of a valid sequence.</param>
 		/// <returns>True if a valid sequence was discovered. False otherwise.</returns>
-		private bool HasTokenSequenceAtLocation(BoardToken tokenType, BoardDirection direction, int startingTokenIndex, int sequenceLength)
+		private bool HasTokenSequenceAtLocation(BoardToken tokenType, BoardDirection direction, int startingTokenIndex)
 		{
-
 			//The starting token counts as 1
 			int currentTraversal = 1;
 			int currentSequenceLength = Slots[startingTokenIndex] == tokenType ? 1 : 0;
-			int maxTraversal = (sequenceLength * 2);
+			int maxTraversal = (MinimumSequenceLength * 2);
 
 			int? nextTokenIndex = GetTokenIndexInDirectionFrom(direction, startingTokenIndex);
 			while (nextTokenIndex is int tokenIndex && currentTraversal < maxTraversal)
 			{
 				currentSequenceLength = tokenType == Slots[tokenIndex] ? currentSequenceLength + 1 : 0;
 
-				if (currentSequenceLength >= sequenceLength) return true;
+				if (currentSequenceLength >= MinimumSequenceLength) return true;
 
 				nextTokenIndex = GetTokenIndexInDirectionFrom(direction, tokenIndex);
 				currentTraversal++;
@@ -171,13 +199,9 @@ namespace Connect_X
 		/// <param name="tokenIndex">The valid index of a token of interest.</param>
 		/// <param name="distance">The number of slots to traverse away from the token at <paramref name="tokenIndex"/>.</param>
 		/// <returns>A valid <see cref="Slots"/> index, up to <paramref name="distance"/> away from <paramref name="tokenIndex"/>, in the specified <paramref name="direction"/>.</returns>
-		/// <exception cref="ArgumentOutOfRangeException">If the <paramref name="tokenIndex"/> is invalid, or <paramref name="distance"/> is less than 1.</exception>
 		/// <exception cref="NotImplementedException">If the given direction is not supported.</exception>
-		public int GetTokenIndexInDirectionFrom(BoardDirection direction, int tokenIndex, int distance)
+		private int GetTokenIndexInDirectionFrom(BoardDirection direction, int tokenIndex, int distance)
 		{
-			//Throw exception if input is invalid.
-			_ = IsTokenIndexValid(tokenIndex);
-
 			int lastValidIndex = tokenIndex;
 			int? nextTokenIndex = GetTokenIndexInDirectionFrom(direction, tokenIndex);
 			for (int i = 0; i < distance && nextTokenIndex is int validIndex; i++, nextTokenIndex = GetTokenIndexInDirectionFrom(direction, validIndex))
@@ -223,7 +247,7 @@ namespace Connect_X
 				_ => throw new NotImplementedException()
 			};
 
-			if (IsTokenIndexValid(index, false))
+			if (index >= 0 && index < Slots.Length)
 			{
 				return index;
 			}
@@ -232,20 +256,24 @@ namespace Connect_X
 		}
 
 		/// <summary>
-		/// Checks if the given <paramref name="tokenIndex"/> is a valid index of <see cref="Slots"/>, and returns true if so.
-		/// If <paramref name="throwException"/> is true, and <paramref name="tokenIndex"/> is invalid, an
-		/// <see cref="ArgumentOutOfRangeException"/> is thrown.
+		/// Calculates a token index based on the given <paramref name="row"/> and <paramref name="column"/> coordinate.
+		/// The coordinates are zero-based.
+		/// <br></br><br></br>
+		/// If invalid values are given, an <see cref="ArgumentOutOfRangeException"/> is thrown.
 		/// </summary>
-		/// <param name="tokenIndex">The index to validate.</param>
-		/// <param name="throwException">If this method should throw an exception if the given <paramref name="tokenIndex"/> is invalid.</param>
-		/// <returns>True if the given <paramref name="tokenIndex"/> is valid; false, or an exception is thrown, otherwise.</returns>
-		/// <exception cref="ArgumentOutOfRangeException">If <paramref name="throwException"/> is true, and <paramref name="tokenIndex"/> is invalid.</exception>
-		private bool IsTokenIndexValid(int tokenIndex, bool throwException = true)
+		/// <param name="row">The row of interest.</param>
+		/// <param name="column">The column of interest.</param>
+		/// <returns>The token index for a token at the given <paramref name="row"/> and <paramref name="column"/> of the board.</returns>
+		/// <exception cref="ArgumentOutOfRangeException">If the given <paramref name="row"/> or <paramref name="column"/> is invalid.</exception>
+		private int GetTokenIndexAtLocation(int row, int column)
 		{
-			bool valid = tokenIndex >= 0 && tokenIndex < Slots.Length;
-			if (!valid && throwException)
-				throw new ArgumentOutOfRangeException(nameof(tokenIndex), "The given token index is not valid.");
-			return valid;
+			if (row >= Rows)
+				throw new ArgumentOutOfRangeException(nameof(row), "The given row location is invalid.");
+
+			if (column >= Columns)
+				throw new ArgumentOutOfRangeException(nameof(column), "The given column location is invalid.");
+
+			return (Columns * row) + column;
 		}
 	}
 }
