@@ -1,7 +1,21 @@
-﻿using Bored_with_Web.Models;
-
-namespace Bored_with_Web.Games
+﻿namespace Bored_with_Web.Games
 {
+	[AttributeUsage(AttributeTargets.Class)]
+	public class GameAttribute : Attribute
+	{
+		public GameInfo Info { get; }
+
+		public GameAttribute(string gameRouteId)
+		{
+			if (CanonicalGames.GetGameInfoByRouteId(gameRouteId) is not GameInfo game)
+			{
+				throw new ArgumentException("The given RouteId does not match any known Games.", nameof(gameRouteId));
+			}
+
+			Info = game;
+		}
+	}
+
 	public abstract class SimpleGame
 	{
 		public GameInfo Info { get; }
@@ -12,9 +26,14 @@ namespace Bored_with_Web.Games
 
 		public event EventHandler<SimpleGame>? OnGameEnded;
 
-		public SimpleGame(GameInfo gameInfo, string gameId, params Player[] players)
+		public SimpleGame(string gameId, params Player[] players)
 		{
-			Info = gameInfo;
+			if (Attribute.GetCustomAttribute(this.GetType(), typeof(GameAttribute)) is not GameAttribute game)
+			{
+				throw new NotImplementedException($"SimpleGame subclasses must be marked with a {nameof(GameAttribute)}.");
+			}
+
+			Info = game.Info;
 			GameId = gameId;
 
 			for (int i = 0; i < players.Length; i++)
