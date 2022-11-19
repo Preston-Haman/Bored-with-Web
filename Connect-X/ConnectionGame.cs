@@ -19,7 +19,7 @@ namespace Connect_X
 		/// <param name="nextPlayerToken">The token representing the next active player, or <see cref="BoardToken.None"/> if the game is over.</param>
 		/// <param name="row">The row where the token was played.</param>
 		/// <param name="column">The column where the token was played.</param>
-		public void TokenPlayed(BoardToken playedToken, BoardToken nextPlayerToken, int row, int column);
+		public void TokenPlayed(BoardToken playedToken, BoardToken nextPlayerToken, byte row, byte column);
 
 		/// <summary>
 		/// Called when an invalid move was attempted by a player. Implementors of <see cref="IConnectionGameEventHandler"/> may use this method
@@ -35,13 +35,13 @@ namespace Connect_X
 		/// <param name="row">The row where the token was attempted to be played.</param>
 		/// <param name="column">The column where the token was attempted to be played.</param>
 		/// <returns>True if <see cref="RefreshBoard(BoardToken[])"/> should be called; false otherwise.</returns>
-		public bool ShouldRefreshBoardOnInvalidPlay(BoardToken attemptedPlayToken, BoardToken existingTokenInSlot, bool isActivePlayer, int row, int column);
+		public bool ShouldRefreshBoardOnInvalidPlay(BoardToken attemptedPlayToken, BoardToken existingTokenInSlot, bool isActivePlayer, byte row, byte column);
 
 		/// <summary>
 		/// Allows implementors to sync representations of the game board with the underlying one.
 		/// <br></br><br></br>
 		/// This method is only called under the condition that an invalid move was attempted, and
-		/// <see cref="ShouldRefreshBoardOnInvalidPlay(BoardToken, BoardToken, bool, int, int)"/>
+		/// <see cref="ShouldRefreshBoardOnInvalidPlay(BoardToken, BoardToken, bool, byte, byte)"/>
 		/// returned true.
 		/// </summary>
 		/// <param name="validBoard">The underlying representation of the board. This is not a copy; and should not be modified.</param>
@@ -118,7 +118,7 @@ namespace Connect_X
 		/// <param name="token">The token to play at the specified location.</param>
 		/// <param name="row">The row in which to play the <paramref name="token"/>.</param>
 		/// <param name="column">The column in which to play the <paramref name="token"/>.</param>
-		public void PlayToken(IConnectionGameEventHandler handler, BoardToken token, int row, int column)
+		public void PlayToken(IConnectionGameEventHandler handler, BoardToken token, byte row, byte column)
 		{
 			if (token != activePlayer || !board.IsTokenSlotAvailable(row, column))
 			{
@@ -155,11 +155,11 @@ namespace Connect_X
 		/// <param name="handler">An implementation of callback methods that the caller can update their representation of the board with.</param>
 		/// <param name="token">The token to play in the specified <paramref name="column"/>.</param>
 		/// <param name="column">The column in which to play the <paramref name="token"/>.</param>
-		/// <seealso cref="PlayToken(IConnectionGameEventHandler, BoardToken, int, int)"/>
-		public void PlayGravityToken(IConnectionGameEventHandler handler, BoardToken token, int column)
+		/// <seealso cref="PlayToken(IConnectionGameEventHandler, BoardToken, byte, byte)"/>
+		public void PlayGravityToken(IConnectionGameEventHandler handler, BoardToken token, byte column)
 		{
 			bool attempted = false;
-			for (int row = 0; row < board.Rows; row++)
+			for (byte row = 0; row < board.Rows; row++)
 			{
 				if (board.IsTokenSlotAvailable(row, column))
 				{
