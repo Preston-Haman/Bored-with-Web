@@ -3,7 +3,7 @@
 namespace Bored_with_Web.Hubs
 {
 	/// <summary>
-	/// Defines methods that are available on the client side of a <see cref="MultiplayerGame{MultiplayerClient}"/>.
+	/// Defines methods that are available on the client side of a <see cref="MultiplayerGameHub{MultiplayerClient}"/>.
 	/// </summary>
 	public interface IMultiplayerGameClient
 	{
@@ -89,7 +89,7 @@ namespace Bored_with_Web.Hubs
 	/// </summary>
 	/// <typeparam name="IMultiplayerClient">An interface, implementing <see cref="IMultiplayerGameClient"/>, that defines methods available on the client
 	/// for the game represented by the concrete subclass' implementation.</typeparam>
-	public abstract class MultiplayerGame<IMultiplayerClient> : Hub<IMultiplayerClient>
+	public abstract class MultiplayerGameHub<IMultiplayerClient> : Hub<IMultiplayerClient>
 		where IMultiplayerClient: class, IMultiplayerGameClient
 	{
 		public async override Task OnConnectedAsync()
