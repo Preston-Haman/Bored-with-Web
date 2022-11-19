@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR;
-
-namespace Bored_with_Web.Hubs
+﻿namespace Bored_with_Web.Hubs
 {
 	/// <summary>
 	/// Defines methods that are available on the client side of a <see cref="MultiplayerGameHub{MultiplayerClient}"/>.
@@ -89,7 +87,7 @@ namespace Bored_with_Web.Hubs
 	/// </summary>
 	/// <typeparam name="IMultiplayerClient">An interface, implementing <see cref="IMultiplayerGameClient"/>, that defines methods available on the client
 	/// for the game represented by the concrete subclass' implementation.</typeparam>
-	public abstract class MultiplayerGameHub<IMultiplayerClient> : Hub<IMultiplayerClient>
+	public abstract class MultiplayerGameHub<IMultiplayerClient> : UsernameAwareHub<IMultiplayerClient>
 		where IMultiplayerClient: class, IMultiplayerGameClient
 	{
 		public async override Task OnConnectedAsync()
