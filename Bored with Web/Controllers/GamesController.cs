@@ -38,6 +38,7 @@ namespace Bored_with_Web.Controllers
 
 		public IActionResult Lobby(string? id)
 		{
+			//TODO: restrict the user (by name) to a single Lobby at a time.
 			//id is RouteId of the game
 			if (id is null)
 			{
