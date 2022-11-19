@@ -1,17 +1,17 @@
-﻿@model GameInfo
+﻿@model GameInfoViewModel
 
 @{
-	ViewData["Title"] = $"{Model!.Title}";
+	ViewData["Title"] = $"{Model.Info!.Title}";
 }
 
 @section Head
 {
 	@{
-		string style = $"{Model.RouteId}.css";
+		string style = $"{Model.Info.RouteId}.css";
 		<link rel="stylesheet" href="~/css/@style">
 	}
 	
-	@switch (Model.Title) {
+	@switch (Model.Info.Title) {
 		case "Connect Four":
 			int rows = ((int?) ViewData["rows"]) ?? 6;
 			int cols = ((int?) ViewData["cols"]) ?? 7;
@@ -45,9 +45,9 @@
 	}
 }
 
-@switch (Model.Title) {
+@switch (Model.Info.Title) {
 	case "Connect Four":
-		<h1>@Model.Title</h1>
+		<h1>@Model.Info.Title</h1>
 		<partial name="_ConnectFourBoard.cshtml" />
 		break;
 }
@@ -55,7 +55,7 @@
 @section Scripts
 {
 	@{
-		string src = $"{Model.RouteId}.js";
+		string src = $"{Model.Info.RouteId}.js";
 		<script src="~/js/@src"></script>
 	}
 }

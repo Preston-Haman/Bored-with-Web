@@ -1,4 +1,5 @@
-﻿using Bored_with_Web.Models;
+﻿using Bored_with_Web.Games;
+using Bored_with_Web.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bored_with_Web.Controllers
@@ -83,7 +84,8 @@ namespace Bored_with_Web.Controllers
 				return NotFound();
 			}
 
-			return View(game);
+			//The current player count doesn't matter here
+			return View(new GameInfoViewModel(game, currentPlayerCount: 0, GameInfoViewState.PLAY));
 		}
 	}
 }

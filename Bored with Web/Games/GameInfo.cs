@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 
-namespace Bored_with_Web.Models
+namespace Bored_with_Web.Games
 {
 	public class GameInfo
 	{
@@ -17,29 +17,6 @@ namespace Bored_with_Web.Models
 		public string Rules { get; set; } = null!;
 
 		public int RequiredPlayerCount { get; set; } = 1;
-	}
-
-	public enum GameInfoViewState
-	{
-		SELECTION,
-		DESCRIPTION,
-		LOBBY
-	}
-
-	public class GameInfoViewModel
-	{
-		public GameInfo Info { get; }
-
-		public int CurrentPlayerCount { get; set; }
-
-		public GameInfoViewState ViewState { get; set; }
-
-		public GameInfoViewModel(GameInfo info, int currentPlayerCount, GameInfoViewState viewState)
-		{
-			Info = info;
-			CurrentPlayerCount = currentPlayerCount;
-			ViewState = viewState;
-		}
 	}
 
 	//TODO: Load this from static data somehow...
@@ -83,7 +60,7 @@ namespace Bored_with_Web.Models
 		private static IEnumerable<GameInfo> GetAll()
 		{
 			List<GameInfo> ret = new();
-			
+
 			foreach (PropertyInfo prop in typeof(CanonicalGames).GetProperties(BindingFlags.Public | BindingFlags.Static))
 			{
 				if (prop.GetValue(null) is GameInfo game)
