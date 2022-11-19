@@ -107,9 +107,9 @@ namespace Bored_with_Web.Hubs
 		}
 
 		/// <summary>
-		/// Called when a user rejoins an ongoing game after losing their connection.
+		/// Called when a user joins/rejoins an ongoing game.
 		/// </summary>
-		protected abstract Task OnRejoinedGame();
+		protected abstract Task OnJoinedGame(string gameId);
 
 		public async override Task OnDisconnectedAsync(Exception? exception)
 		{
