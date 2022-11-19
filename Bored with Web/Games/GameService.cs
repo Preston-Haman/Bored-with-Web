@@ -1,9 +1,11 @@
-﻿using Bored_with_Web.Models;
-
-namespace Bored_with_Web.Games
+﻿namespace Bored_with_Web.Games
 {
 	public static class GameService
 	{
+		private static readonly object ID_LOCK = new();
+
+		private static uint nextGameId = 0;
+
 		private static readonly Dictionary<GameInfo, List<GameLobby>> GAME_LOBBIES_BY_GAME = new();
 
 		private static readonly Dictionary<string, SimpleGame> SIMPLE_GAMES_BY_ID = new();
@@ -71,6 +73,19 @@ namespace Bored_with_Web.Games
 			return false;
 		}
 
+		public static string GetNextGameId(string gameRouteId)
+		{
+			if (CanonicalGames.GetGameInfoByRouteId(gameRouteId) is null)
+			{
+				throw new ArgumentException("The given RouteId does not match any known Games.", nameof(gameRouteId));
+			}
+
+			lock (ID_LOCK)
+			{
+				return $"{gameRouteId}#{nextGameId++}";
+			}
+		}
+
 		public static void AddGame(SimpleGame game)
 		//Assume that the player isn't in any other game of the same type.
 		{
@@ -127,7 +142,6 @@ namespace Bored_with_Web.Games
 				GAME_LOBBIES_BY_GAME.Add(game, lobbies);
 			}
 
-			//TODO: If the lobby is too full, create a new one.
 			foreach (GameLobby lobby in lobbies)
 			{
 				if (lobby.Players.Count < lowerThreshold)
@@ -136,6 +150,7 @@ namespace Bored_with_Web.Games
 				}
 			}
 
+			//If the lobby is too full, create a new one.
 			GameLobby newLobby = new(game, $"{gameRouteId}Lobby-{lobbies.Count}");
 
 			//Eventually, these lobbies will empty out. Remove them when they are both empty and at the end of the list.
@@ -170,7 +185,7 @@ namespace Bored_with_Web.Games
 		{
 			SIMPLE_GAMES_BY_ID.Remove(endedGame.GameId);
 
-			//TODO: Remove the entries for SIMPLE_GAMES_BY_PLAYER, as well.
+			//Remove the entries for SIMPLE_GAMES_BY_PLAYER, as well.
 			lock (SIMPLE_GAMES_BY_PLAYER)
 			{
 				foreach (Player player in endedGame.Players)
