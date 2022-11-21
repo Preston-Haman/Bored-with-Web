@@ -7,12 +7,13 @@
 *@
 
 @using Bored_with_Web.Hubs
+@model string //QueryString specifying what chat group this is for; example: "Lobby-Connect-Four"
 
 <link rel="stylesheet" href="~/css/chat.css">
 <script src="~/js/signalr/dist/browser/signalr.js"></script>
 
 <script>
-	@{ string url = $"/{nameof(ChatHub)}"; }
+	@{ string url = $"/{nameof(ChatHub)}?group={Model}"; }
 	const CHAT_CONNECTION_BUILDER = new signalR.HubConnectionBuilder().withUrl("@url");
 	const CHAT_RECEIVE_MESSAGE = "@nameof(IChatClient.ReceiveMessage)";
 	const CHAT_SEND_MESSAGE = "@nameof(ChatHub.SendMessage)";

@@ -21,12 +21,14 @@ namespace Bored_with_Web.Hubs
 	/// </summary>
 	public class ChatHub : UsernameAwareHub<IChatClient>
 	{
-        public async override Task OnConnectedAsync()
+		private string ChatGroup { get { return Context.GetHttpContext()!.Request.Query["group"]; } }
+
+		public async override Task OnConnectedAsync()
         {
-			//TODO: Add the client to a group to distinguish which chat they joined.
 			if (GetCallerUsername(out string username))
             {
-				await Clients.Others.ReceiveMessage(string.Empty, $"{username} has connected.", false);
+				await Groups.AddToGroupAsync(Context.ConnectionId, ChatGroup);
+				await Clients.OthersInGroup(ChatGroup).ReceiveMessage(string.Empty, $"{username} has connected.", false);
 			}
 
             await base.OnConnectedAsync();
@@ -43,17 +45,17 @@ namespace Bored_with_Web.Hubs
 		{
 			if (GetCallerUsername(out string username))
             {
-				await Clients.Others.ReceiveMessage(username, message, false);
+				await Clients.OthersInGroup(ChatGroup).ReceiveMessage(username, message, false);
 				await Clients.Caller.ReceiveMessage(username, message, true);
 			}
 		}
 
         public async override Task OnDisconnectedAsync(Exception? exception)
         {
-			//TODO: Clean up groups if necessary (see OnConnectedAsync).
 			if (GetCallerUsername(out string username))
             {
-				await Clients.Others.ReceiveMessage(string.Empty, $"{username} has been disconnected.", false);
+				await Groups.RemoveFromGroupAsync(Context.ConnectionId, ChatGroup);
+				await Clients.OthersInGroup(ChatGroup).ReceiveMessage(string.Empty, $"{username} has been disconnected.", false);
             }
 
             await base.OnDisconnectedAsync(exception);
