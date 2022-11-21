@@ -1,4 +1,6 @@
-﻿namespace Bored_with_Web.Games
+﻿using System.Reflection;
+
+namespace Bored_with_Web.Games
 {
 	public static class GameService
 	{
@@ -8,25 +10,22 @@
 
 		private static readonly Dictionary<GameInfo, List<GameLobby>> GAME_LOBBIES_BY_GAME = new();
 
+		private static readonly Dictionary<string, HashSet<string>> SIMPLE_GAME_IDS_BY_LOBBY_GROUP = new();
+
 		private static readonly Dictionary<string, SimpleGame> SIMPLE_GAMES_BY_ID = new();
 
-		//TODO: Consider refactoring to use GameId (string) instead of GameInfo; it would allow users to play multiple games at once.
-		//It would require that the GamesController is refactored to have a GameId in the url, though.
-		private static readonly Dictionary<Player, Dictionary<GameInfo, SimpleGame>> SIMPLE_GAMES_BY_PLAYER = new();
-
-		public static bool IsPlayerInLobby(Player player, out GameLobby? lobby)
+		public static bool IsPlayerInLobby(Player player, string gameRouteId, out GameLobby? lobby)
 		{
-			foreach (GameInfo game in CanonicalGames.AllGames)
+			GameInfo game = GetGameInfo(gameRouteId);
+
+			if (GAME_LOBBIES_BY_GAME.TryGetValue(game, out List<GameLobby>? lobbies))
 			{
-				if (GAME_LOBBIES_BY_GAME.TryGetValue(game, out List<GameLobby>? lobbies))
+				foreach (GameLobby lob in lobbies)
 				{
-					foreach (GameLobby lob in lobbies)
+					if (lob.Players.Contains(player))
 					{
-						if (lob.Players.Contains(player))
-						{
-							lobby = lob;
-							return true;
-						}
+						lobby = lob;
+						return true;
 					}
 				}
 			}
@@ -37,9 +36,9 @@
 
 		public static GameLobby AddPlayerToLobby(Player player, string gameRouteId)
 		{
-			if (IsPlayerInLobby(player, out _))
+			if (IsPlayerInLobby(player, gameRouteId, out _))
 			{
-				throw new InvalidOperationException("The specified player is already in a lobby.");
+				throw new InvalidOperationException("The specified player is already in a lobby for the specified game.");
 			}
 
 			GameLobby lobby = GetOrCreateGameLobby(gameRouteId);
@@ -47,66 +46,29 @@
 			return lobby;
 		}
 
-		public static string RemovePlayerFromLobby(Player player)
+		public static SimpleGame CreateNextGame(string lobbyGroup, string gameRouteId, Player[] players)
 		{
-			if (IsPlayerInLobby(player, out GameLobby? lobby))
-			{
-				lobby!.RemovePlayer(player);
-				return lobby.LobbyGroup;
-			}
+			GameInfo game = GetGameInfo(gameRouteId);
 
-			throw new InvalidOperationException("The specified player is not in a lobby.");
+			MethodInfo method = typeof(GameService).GetMethod(nameof(CreateNextGame), BindingFlags.Static, new Type[] {typeof(string), typeof(Player[]), typeof(string)})!;
+			return (SimpleGame) method.MakeGenericMethod(game.ImplementingType).Invoke(null, new object[] { gameRouteId, players, lobbyGroup })!;
 		}
-
-		public static bool IsPlayerInGame(Player player, string gameRouteId)
+		
+		private static GameType CreateNextGame<GameType>(string gameRouteId, Player[] players, string lobbyGroup) //Parameter order is to avoid ambiguity with Reflection
+			where GameType: SimpleGame, new()
 		{
-			if (CanonicalGames.GetGameInfoByRouteId(gameRouteId) is not GameInfo game)
-			{
-				throw new ArgumentException("The given RouteId does not match any known Games.", nameof(gameRouteId));
-			}
+			GameInfo info = GetGameInfo(gameRouteId);
 
-			if (SIMPLE_GAMES_BY_PLAYER.TryGetValue(player, out Dictionary<GameInfo, SimpleGame>? games))
-			{
-				return games.ContainsKey(game);
-			}
-
-			return false;
-		}
-
-		public static string GetNextGameId(string gameRouteId)
-		{
-			if (CanonicalGames.GetGameInfoByRouteId(gameRouteId) is null)
-			{
-				throw new ArgumentException("The given RouteId does not match any known Games.", nameof(gameRouteId));
-			}
-
+			string gameId;
 			lock (ID_LOCK)
 			{
-				return $"{gameRouteId}#{nextGameId++}";
-			}
-		}
-
-		public static void AddGame(SimpleGame game)
-		//Assume that the player isn't in any other game of the same type.
-		{
-			SIMPLE_GAMES_BY_ID.Add(game.GameId, game);
-
-			//Get players from the game, and populate the SIMPLE_GAMES_BY_PLAYER dictionary.
-			foreach (Player player in game.Players)
-			{
-				if (!SIMPLE_GAMES_BY_PLAYER.TryGetValue(player, out Dictionary<GameInfo, SimpleGame>? games))
-				{
-					games = new();
-					games.Add(game.Info, game);
-					SIMPLE_GAMES_BY_PLAYER.Add(player, games);
-				}
-				else
-				{
-					games.Add(game.Info, game);
-				}
+				gameId = $"{gameRouteId}#{nextGameId++}";
 			}
 
-			game.OnGameEnded += RemoveGameWhenEnded;
+			GameType game = new();
+			game.CreateGame(info, gameId, players);
+			AddGame(game, lobbyGroup);
+			return game;
 		}
 
 		public static SimpleGame? GetGame(string gameId)
@@ -115,25 +77,44 @@
 			return game;
 		}
 
-		public static string[] GetAllGameIdsFor(string gameRouteId)
+		public static string[] GetAllGameIdsFor(string lobbyGroup)
 		{
-			if (CanonicalGames.GetGameInfoByRouteId(gameRouteId) is not GameInfo info)
+			if (SIMPLE_GAME_IDS_BY_LOBBY_GROUP.TryGetValue(lobbyGroup, out HashSet<string>? gameIds))
 			{
-				throw new ArgumentException("The given RouteId does not match any known Games.", nameof(gameRouteId));
+				return gameIds.ToArray();
 			}
 
-			//TODO: Refactor to do this faster?
-			return (from SimpleGame game in SIMPLE_GAMES_BY_ID
-					where game.Info == info
-					select game.GameId).ToArray();
+			return Array.Empty<string>();
+		}
+
+		private static void AddGame(SimpleGame game, string lobbyGroup)
+		{
+			SIMPLE_GAMES_BY_ID.Add(game.GameId, game);
+
+			if (!SIMPLE_GAME_IDS_BY_LOBBY_GROUP.TryGetValue(lobbyGroup, out HashSet<string>? games))
+			{
+				games = new();
+				games.Add(game.GameId);
+				SIMPLE_GAME_IDS_BY_LOBBY_GROUP.Add(lobbyGroup, games);
+			}
+			else
+			{
+				games.Add(game.GameId);
+			}
+
+			game.OnGameEnded += (object? sender, SimpleGame endedGame) => {
+				SIMPLE_GAMES_BY_ID.Remove(endedGame.GameId);
+
+				if (SIMPLE_GAME_IDS_BY_LOBBY_GROUP.TryGetValue(lobbyGroup, out HashSet<string>? games))
+				{
+					games.Remove(endedGame.GameId);
+				}
+			};
 		}
 
 		private static GameLobby GetOrCreateGameLobby(string gameRouteId, int lowerThreshold = 75, int upperThreshold = 100)
 		{
-			if (CanonicalGames.GetGameInfoByRouteId(gameRouteId) is not GameInfo game)
-			{
-				throw new ArgumentException("The given RouteId does not match any known Games.", nameof(gameRouteId));
-			}
+			GameInfo game = GetGameInfo(gameRouteId);
 
 			if (!GAME_LOBBIES_BY_GAME.TryGetValue(game, out List<GameLobby>? lobbies))
 			{
@@ -181,21 +162,21 @@
 			}
 		}
 
-		private static void RemoveGameWhenEnded(object? sender, SimpleGame endedGame)
+		/// <summary>
+		/// Gets the <see cref="GameInfo"/> associated with the given <paramref name="gameRouteId"/>, or throws an exception
+		/// if no such game exists.
+		/// </summary>
+		/// <param name="gameRouteId">The name of the game as it appears in the website url.</param>
+		/// <returns>The <see cref="GameInfo"/> associated with the given <paramref name="gameRouteId"/>.</returns>
+		/// <exception cref="ArgumentException">If an invalid <paramref name="gameRouteId"/> is given.</exception>
+		private static GameInfo GetGameInfo(string gameRouteId)
 		{
-			SIMPLE_GAMES_BY_ID.Remove(endedGame.GameId);
-
-			//Remove the entries for SIMPLE_GAMES_BY_PLAYER, as well.
-			lock (SIMPLE_GAMES_BY_PLAYER)
+			if (CanonicalGames.GetGameInfoByRouteId(gameRouteId) is not GameInfo game)
 			{
-				foreach (Player player in endedGame.Players)
-				{
-					if (SIMPLE_GAMES_BY_PLAYER.TryGetValue(player, out Dictionary<GameInfo, SimpleGame>? games))
-					{
-						games.Remove(endedGame.Info);
-					}
-				}
+				throw new ArgumentException("The given RouteId does not match any known Games.", nameof(gameRouteId));
 			}
+
+			return game;
 		}
 	}
 }
