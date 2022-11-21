@@ -6,17 +6,29 @@ namespace Bored_with_Web.Games
 	[Game("Connect-Four")]
 	public class ConnectFour : SimpleGame
 	{
+		const byte STANDARD_CONNECT_FOUR_ROWS = 6;
+		
+		const byte STANDARD_CONNECT_FOUR_COLUMNS = 7;
+		
+		const byte STANDARD_CONNECT_FOUR_SEQUENCE_LENGTH = 4;
+
 		private readonly ConnectionGame board;
 
-		public ConnectFour(string gameId, Player player1, Player player2) : base(gameId, player1, player2)
+		/// <summary>
+		/// Empty constructors are required of subclasses of <see cref="SimpleGame"/>.
+		/// </summary>
+		public ConnectFour()
 		{
-			const byte STANDARD_CONNECT_FOUR_ROWS = 6;
-			const byte STANDARD_CONNECT_FOUR_COLUMNS = 7;
-			const byte STANDARD_CONNECT_FOUR_SEQUENCE_LENGTH = 4;
 			board = new(STANDARD_CONNECT_FOUR_ROWS, STANDARD_CONNECT_FOUR_COLUMNS, STANDARD_CONNECT_FOUR_SEQUENCE_LENGTH);
 		}
 
-		public ConnectFour(string gameId, byte rows, byte columns, byte winningSequenceLength, params Player[] players) : base(gameId, players)
+		public ConnectFour(string gameId, Player player1, Player player2)
+		{
+			board = new(STANDARD_CONNECT_FOUR_ROWS, STANDARD_CONNECT_FOUR_COLUMNS, STANDARD_CONNECT_FOUR_SEQUENCE_LENGTH);
+			base.CreateGame(CanonicalGames.GetGameInfoByRouteId("Connect-Four")!, gameId, player1, player2);
+		}
+
+		public ConnectFour(string gameId, byte rows, byte columns, byte winningSequenceLength, params Player[] players)
 		{
 			if (players.Length > byte.MaxValue)
 			{
@@ -24,6 +36,7 @@ namespace Bored_with_Web.Games
 			}
 
 			board = new(rows, columns, winningSequenceLength, (byte) players.Length);
+			base.CreateGame(CanonicalGames.GetGameInfoByRouteId("Connect-Four")!, gameId, players);
 		}
 
 		public void PlayToken(IConnectionGameEventHandler handler, Player player, byte column)
