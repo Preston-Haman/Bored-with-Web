@@ -4,6 +4,8 @@ namespace Bored_with_Web.Games
 {
 	public class GameInfo
 	{
+		public Type ImplementingType { get; set; } = typeof(SimpleGame);
+
 		public string Title { get; set; } = null!;
 
 		public string RouteId { get { return Title.Replace(' ', '-'); } }
@@ -24,6 +26,7 @@ namespace Bored_with_Web.Games
 	{
 		public static GameInfo ConnectFour { get; } = new()
 		{
+			ImplementingType = typeof(ConnectFour),
 			Title = "Connect Four",
 			//ImageURL = "#",
 			Summary = "The Classic Four-in-a-row Matching Game.",
