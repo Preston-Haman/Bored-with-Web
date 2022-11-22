@@ -14,6 +14,29 @@ namespace Bored_with_Web.Games
 
 		private static readonly Dictionary<string, SimpleGame> SIMPLE_GAMES_BY_ID = new();
 
+		public static int GetPlayerCount(GameInfo game)
+		{
+			int count = 0;
+			if (GAME_LOBBIES_BY_GAME.TryGetValue(game, out List<GameLobby>? lobbies))
+			{
+				foreach (GameLobby lobby in lobbies)
+				{
+					count += lobby.Players.Count;
+				}
+			}
+
+			//TODO: It'd probably be better to cache this in another dictionary and pull it from there... maybe Dictionary<GameInfo, int> storing player + spectator count.
+			List<SimpleGame> activeGames = (from entry in SIMPLE_GAMES_BY_ID
+											where entry.Key.StartsWith(game.RouteId)
+											select entry.Value).ToList();
+			
+			foreach (SimpleGame sGame in activeGames)
+			{
+				count += sGame.Players.Count;
+			}
+			return count;
+		}
+
 		public static bool IsPlayerInLobby(Player player, string gameRouteId, out GameLobby? lobby)
 		{
 			GameInfo game = GetGameInfo(gameRouteId);
