@@ -12,8 +12,7 @@ namespace Bored_with_Web.Controllers
 
 			foreach (GameInfo game in CanonicalGames.AllGames)
 			{
-				//TODO: Get current player count from whatever system can track that later on...
-				gameViewModels.Add(new GameInfoViewModel(game, currentPlayerCount: 0, GameInfoViewState.SELECTION));
+				gameViewModels.Add(new GameInfoViewModel(game, GameService.GetPlayerCount(game), GameInfoViewState.SELECTION));
 			}
 
 			return View(gameViewModels);
@@ -33,13 +32,11 @@ namespace Bored_with_Web.Controllers
 				return NotFound();
 			}
 
-			//TODO: Get current player count from whatever system can track that later on...
-			return View(new GameInfoViewModel(game, currentPlayerCount: 0, GameInfoViewState.DESCRIPTION));
+			return View(new GameInfoViewModel(game, GameService.GetPlayerCount(game), GameInfoViewState.DESCRIPTION));
 		}
 
 		public IActionResult Lobby(string? id)
 		{
-			//TODO: restrict the user (by name) to a single Lobby at a time.
 			//id is RouteId of the game
 			if (id is null)
 			{
@@ -52,9 +49,7 @@ namespace Bored_with_Web.Controllers
 				return NotFound();
 			}
 
-			//TODO: Get current player count from whatever system can track that later on...
-			//Might have to replace this model with something else later... depends on how I feel about SignalR hubs
-			return View(new GameInfoViewModel(game, currentPlayerCount: 0, GameInfoViewState.LOBBY));
+			return View(new GameInfoViewModel(game, GameService.GetPlayerCount(game), GameInfoViewState.LOBBY));
 		}
 
 		/// <summary>
@@ -64,28 +59,31 @@ namespace Bored_with_Web.Controllers
 		/// the lobby -- they are redirected to the game's lobby.
 		/// </summary>
 		/// <param name="id">The RouteId of the game the user is trying to play.</param>
-		public IActionResult Play(string? id)
+		/// <param name="game">Part of the query string; the gameId for the game, as assigned by the <see cref="GameService"/>.</param>
+		public IActionResult Play(string? id, string? game)
 		{
-			//TODO: Verify that the user can join this game!
-			if (/* user cannot join this game */ false)
-			{
-				return RedirectToAction(nameof(Lobby), new { id });
-			}
-
 			//id is RouteId of the game
-			if (id is null)
+			string? username = HttpContext.Session.GetUsername();
+			if (id is null || game is null || GameService.GetGame(game) is not SimpleGame activeGame || username is null)
 			{
 				return RedirectToAction(nameof(Index));
 			}
 
-			GameInfo? game = CanonicalGames.GetGameInfoByRouteId(id);
-			if (game is null)
+			GameInfo? info = CanonicalGames.GetGameInfoByRouteId(id);
+			if (info is null)
 			{
 				return NotFound();
 			}
 
+			Player player = new(username);
+			//Verify that the user can join this game
+			if (!activeGame.Players.Contains(player))
+			{
+				return RedirectToAction(nameof(Lobby), new { id });
+			}
+
 			//The current player count doesn't matter here
-			return View(new GameInfoViewModel(game, currentPlayerCount: 0, GameInfoViewState.PLAY));
+			return View(new GameInfoViewModel(info, currentPlayerCount: 0, GameInfoViewState.PLAY));
 		}
 	}
 }
