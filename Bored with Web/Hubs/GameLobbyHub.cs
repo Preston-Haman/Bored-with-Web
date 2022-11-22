@@ -183,21 +183,19 @@ namespace Bored_with_Web.Hubs
 		{
 			if (GetCallerUsername(out string username))
 			{
-				await Groups.RemoveFromGroupAsync(Context.ConnectionId, username);
+				Player player = new(username);
+				if (GameService.IsPlayerInLobby(player, GameRouteId, out GameLobby? lobby))
+				{
+					/*
+					 * This removes the player from the lobby internally; if the player joined the same lobby more than
+					 * once, their extra connections will never be matched with anyone.
+					 */
+					lobby!.RemovePlayer(player);
+					await Groups.RemoveFromGroupAsync(Context.ConnectionId, lobby.LobbyGroup);
+					await Clients.Group(lobby.LobbyGroup).PlayerDisconnected(username);
+				}
 			}
 
-			Player player = new(username);
-			if (GameService.IsPlayerInLobby(player, GameRouteId, out GameLobby? lobby))
-			{
-				/*
-				 * This removes the player from the lobby internally; if the player joined the same lobby more than
-				 * once, their extra connections will never be matched with anyone.
-				 */
-				lobby!.RemovePlayer(player);
-				await Groups.RemoveFromGroupAsync(Context.ConnectionId, lobby.LobbyGroup);
-				await Clients.Group(lobby.LobbyGroup).PlayerDisconnected(username);
-			}
-			
 			await base.OnDisconnectedAsync(exception);
 		}
 	}
