@@ -19,14 +19,16 @@ namespace Bored_with_Web.Hubs
 	/// <summary>
 	/// Handles basic real-time chat features.
 	/// </summary>
-	public class ChatHub : Hub<IChatClient>
+	public class ChatHub : UsernameAwareHub<IChatClient>
 	{
-        public async override Task OnConnectedAsync()
+		private string ChatGroup { get { return Context.GetHttpContext()!.Request.Query["group"]; } }
+
+		public async override Task OnConnectedAsync()
         {
-			//TODO: Add the client to a group to distinguish which chat they joined.
 			if (GetCallerUsername(out string username))
             {
-				await Clients.Others.ReceiveMessage(string.Empty, $"{username} has connected.", false);
+				await Groups.AddToGroupAsync(Context.ConnectionId, ChatGroup);
+				await Clients.OthersInGroup(ChatGroup).ReceiveMessage(string.Empty, $"{username} has connected.", false);
 			}
 
             await base.OnConnectedAsync();
@@ -43,32 +45,20 @@ namespace Bored_with_Web.Hubs
 		{
 			if (GetCallerUsername(out string username))
             {
-				await Clients.Others.ReceiveMessage(username, message, false);
+				await Clients.OthersInGroup(ChatGroup).ReceiveMessage(username, message, false);
 				await Clients.Caller.ReceiveMessage(username, message, true);
 			}
 		}
 
         public async override Task OnDisconnectedAsync(Exception? exception)
         {
-			//TODO: Clean up groups if necessary (see OnConnectedAsync).
 			if (GetCallerUsername(out string username))
             {
-				await Clients.Others.ReceiveMessage(string.Empty, $"{username} has been disconnected.", false);
+				await Groups.RemoveFromGroupAsync(Context.ConnectionId, ChatGroup);
+				await Clients.OthersInGroup(ChatGroup).ReceiveMessage(string.Empty, $"{username} has been disconnected.", false);
             }
 
             await base.OnDisconnectedAsync(exception);
         }
-
-		/// <summary>
-		/// Pulls the caller's username from the HttpContext.Session object, and places it into <paramref name="username"/>.
-		/// The method returns true if the username has been populated; false otherwise.
-		/// </summary>
-		/// <param name="username">The username associated with the caller's session.</param>
-		/// <returns>True if <paramref name="username"/> was populated with a username; false otherwise.</returns>
-		private bool GetCallerUsername(out string username)
-        {
-			username = Context.GetHttpContext()?.Session.GetUsername()!;
-			return username is not null;
-		}
     }
 }

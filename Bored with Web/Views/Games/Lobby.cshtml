@@ -6,7 +6,10 @@
 
 @section Head
 {
-	<partial name="_Chat" />
+	@{
+		string chatGroup = $"Lobby-{Model.Info.RouteId}";
+	}
+	<partial name="_Chat" model="@chatGroup"/>
 }
 
 <partial name="_GameInfo.cshtml" model="@Model" />
