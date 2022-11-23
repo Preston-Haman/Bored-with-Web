@@ -42,7 +42,7 @@ namespace Connect_X
 		/// <br></br><br></br>
 		/// This method is only called under the condition that an invalid move was attempted, and
 		/// <see cref="ShouldRefreshBoardOnInvalidPlay(BoardToken, BoardToken, bool, byte, byte)"/>
-		/// returned true.
+		/// returned true; or a direct call to <see cref="ConnectionGame.RefreshBoard(IConnectionGameEventHandler)"/> is made.
 		/// </summary>
 		/// <param name="validBoard">The underlying representation of the board. This is not a copy; and should not be modified.</param>
 		public void RefreshBoard(BoardToken[] validBoard);
@@ -177,6 +177,17 @@ namespace Connect_X
 					handler.RefreshBoard(board.Slots);
 				}
 			}
+		}
+
+		/// <summary>
+		/// Directly calls <see cref="IConnectionGameEventHandler.RefreshBoard(BoardToken[])"/>.
+		/// <br></br><br></br>
+		/// This method exists for the sake of exposing the state of the board to the caller.
+		/// </summary>
+		/// <param name="handler">An implementation of callback methods that the caller can update their representation of the board with.</param>
+		public void RefreshBoard(IConnectionGameEventHandler handler)
+		{
+			handler.RefreshBoard(board.Slots);
 		}
 
 		/// <summary>

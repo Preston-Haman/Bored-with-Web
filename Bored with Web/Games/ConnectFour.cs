@@ -46,6 +46,11 @@ namespace Bored_with_Web.Games
 			board.PlayGravityToken(handler, (BoardToken) internalPlayer.PlayerNumber, column);
 		}
 
+		public void RefreshBoard(IConnectionGameEventHandler handler)
+		{
+			board.RefreshBoard(handler);
+		}
+
 		public void Forfeit(IConnectionGameEventHandler handler, Player player, bool isDisconnected)
 		{
 			Player internalPlayer = GetInternalPlayer(player);
