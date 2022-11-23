@@ -64,15 +64,5 @@ namespace Bored_with_Web.Games
 
 			board.ClearBoard(handler, (BoardToken) internalPlayer.PlayerNumber);
 		}
-
-		private Player GetInternalPlayer(Player externalPlayer)
-		{
-			if (!Players.TryGetValue(externalPlayer, out Player? internalPlayer))
-			{
-				throw new InvalidOperationException("The given player is not a part of this game!");
-			}
-
-			return internalPlayer;
-		}
 	}
 }
