@@ -1,9 +1,13 @@
-﻿using System.Reflection;
+﻿using Bored_with_Web.Hubs;
+using Microsoft.AspNetCore.SignalR;
+using System.Reflection;
 
 namespace Bored_with_Web.Games
 {
 	public static class GameService
 	{
+		public static IServiceProvider DIServices { get; set; } = null!;
+
 		private static readonly object ID_LOCK = new();
 
 		private static uint nextGameId = 0;
@@ -13,6 +17,8 @@ namespace Bored_with_Web.Games
 		private static readonly Dictionary<string, HashSet<string>> SIMPLE_GAME_IDS_BY_LOBBY_GROUP = new();
 
 		private static readonly Dictionary<string, SimpleGame> SIMPLE_GAMES_BY_ID = new();
+
+		private static readonly Dictionary<string, HashSet<Player>> PLAYER_FORFEIT_TIMEOUTS_BY_GAME_ID = new();
 
 		public static int GetPlayerCount(GameInfo game)
 		{
@@ -73,7 +79,7 @@ namespace Bored_with_Web.Games
 		{
 			GameInfo game = GetGameInfo(gameRouteId);
 
-			MethodInfo method = typeof(GameService).GetMethod(nameof(CreateNextGame), BindingFlags.Static, new Type[] {typeof(string), typeof(Player[]), typeof(string)})!;
+			MethodInfo method = typeof(GameService).GetMethod(nameof(CreateNextGame), BindingFlags.Static | BindingFlags.NonPublic, new Type[] {typeof(string), typeof(Player[]), typeof(string)})!;
 			return (SimpleGame) method.MakeGenericMethod(game.ImplementingType).Invoke(null, new object[] { gameRouteId, players, lobbyGroup })!;
 		}
 		
@@ -110,6 +116,62 @@ namespace Bored_with_Web.Games
 			return Array.Empty<string>();
 		}
 
+		public static void AddForfeitTimeout<TGame, TClient>(Type tHub, string gameId, Player player, int timeoutSeconds)
+			where TGame : SimpleGame
+			where TClient : class, IMultiplayerGameClient
+		{
+			if (!tHub.IsAssignableTo(typeof(MultiplayerGameHub<TGame, TClient>)))
+			{
+				throw new ArgumentException($"{nameof(tHub)} must be a {nameof(MultiplayerGameHub<TGame, TClient>)}.", nameof(tHub));
+			}
+
+			MethodInfo method = typeof(GameService).GetMethod(nameof(AddForfeitTimeout), BindingFlags.Static | BindingFlags.NonPublic, new Type[] { typeof(string), typeof(Player), typeof(int) })!;
+			method.MakeGenericMethod(tHub, typeof(TGame), typeof(TClient)).Invoke(null, new object[] { gameId, player, timeoutSeconds });
+		}
+
+		private static async void AddForfeitTimeout<THub, TGame, TClient>(string gameId, Player player, int timeoutSeconds)
+			where THub: MultiplayerGameHub<TGame, TClient>
+			where TGame: SimpleGame
+			where TClient: class, IMultiplayerGameClient
+		{
+			if (!PLAYER_FORFEIT_TIMEOUTS_BY_GAME_ID.TryGetValue(gameId, out HashSet<Player>? players))
+			{
+				players = new();
+				PLAYER_FORFEIT_TIMEOUTS_BY_GAME_ID.Add(gameId, players);
+			}
+
+			players.Add(player);
+
+			if (DIServices.GetHubContext(out IHubContext<THub, TClient>? context))
+			{
+				await Task.Delay(timeoutSeconds * 1000);
+				bool forfeit = false;
+
+				//Use the same lock as the cancel method.
+				lock (PLAYER_FORFEIT_TIMEOUTS_BY_GAME_ID)
+				{
+					//We've potentially had several seconds for player to be removed from players; so we can check it before we forfeit them.
+					forfeit = players.Contains(player);
+				}
+
+				if (forfeit)
+				{
+					MultiplayerGameHub<TGame, TClient>.OnForfeitTimeout<THub, TGame, TClient>(context!, gameId, player);
+				}
+			}
+		}
+
+		public static void CancelForfeitTimeout(string gameId, Player player)
+		{
+			lock (PLAYER_FORFEIT_TIMEOUTS_BY_GAME_ID)
+			{
+				if (PLAYER_FORFEIT_TIMEOUTS_BY_GAME_ID.TryGetValue(gameId, out HashSet<Player>? players))
+				{
+					players.Remove(player);
+				}
+			}
+		}
+
 		private static void AddGame(SimpleGame game, string lobbyGroup)
 		{
 			SIMPLE_GAMES_BY_ID.Add(game.GameId, game);
@@ -117,13 +179,9 @@ namespace Bored_with_Web.Games
 			if (!SIMPLE_GAME_IDS_BY_LOBBY_GROUP.TryGetValue(lobbyGroup, out HashSet<string>? games))
 			{
 				games = new();
-				games.Add(game.GameId);
 				SIMPLE_GAME_IDS_BY_LOBBY_GROUP.Add(lobbyGroup, games);
 			}
-			else
-			{
-				games.Add(game.GameId);
-			}
+			games.Add(game.GameId);
 
 			game.OnGameEnded += (object? sender, SimpleGame endedGame) => {
 				SIMPLE_GAMES_BY_ID.Remove(endedGame.GameId);
@@ -131,6 +189,13 @@ namespace Bored_with_Web.Games
 				if (SIMPLE_GAME_IDS_BY_LOBBY_GROUP.TryGetValue(lobbyGroup, out HashSet<string>? games))
 				{
 					games.Remove(endedGame.GameId);
+				}
+
+				//Send message to lobby clients that the game ended.
+				//var context = (IHubContext<GameLobbyHub, IGameLobbyClient>) DIServices.GetRequiredService(typeof(IHubContext<GameLobbyHub, IGameLobbyClient>));
+				if (DIServices.GetHubContext(out IHubContext<GameLobbyHub, IGameLobbyClient>? context))
+				{
+					GameLobbyHub.OnGameEnded(context!, lobbyGroup, endedGame.GameId);
 				}
 			};
 		}
@@ -200,6 +265,14 @@ namespace Bored_with_Web.Games
 			}
 
 			return game;
+		}
+
+		private static bool GetHubContext<THub, TClient>(this IServiceProvider services, out IHubContext<THub, TClient>? context)
+			where THub: Hub<TClient>
+			where TClient: class
+		{
+			context = services.GetRequiredService(typeof(IHubContext<THub, TClient>)) as IHubContext<THub, TClient>;
+			return context is not null;
 		}
 	}
 }

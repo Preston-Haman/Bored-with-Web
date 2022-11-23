@@ -198,5 +198,10 @@ namespace Bored_with_Web.Hubs
 
 			await base.OnDisconnectedAsync(exception);
 		}
+
+		public static async void OnGameEnded(IHubContext<GameLobbyHub, IGameLobbyClient> context, string lobbyGroup, string gameId)
+		{
+			await context.Clients.Group(lobbyGroup).GameEnded(gameId);
+		}
 	}
 }

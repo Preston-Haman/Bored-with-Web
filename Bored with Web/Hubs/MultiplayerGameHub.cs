@@ -1,4 +1,7 @@
-﻿namespace Bored_with_Web.Hubs
+﻿using Bored_with_Web.Games;
+using Microsoft.AspNetCore.SignalR;
+
+namespace Bored_with_Web.Hubs
 {
 	/// <summary>
 	/// Defines methods that are available on the client side of a <see cref="MultiplayerGameHub{MultiplayerClient}"/>.
@@ -50,9 +53,10 @@
 		Task SpectatorDisconnected(string spectatorName);
 
 		/// <summary>
-		/// Called when the user first connects to a game, and there are other players already connected.
-		/// Implementations may use the provided information to update their representation of the game's
-		/// players and spectators.
+		/// Called when the user first connects to a game. Implementations may use the provided information to update their
+		/// representation of the game's players and spectators.
+		/// <br></br><br></br>
+		/// The client's own name will appear in the list of players.
 		/// </summary>
 		/// <param name="players">The names of the players in the game, in the order of their player number (offset by 1; index 0 is player 1, and so on).</param>
 		/// <param name="spectators">The names of the users spectating the game.</param>
@@ -85,41 +89,156 @@
 	/// A basic implementation for managing the connections of multiplayer games. Concrete subclasses are responsible
 	/// for providing game-state information to rejoining players.
 	/// </summary>
+	/// <typeparam name="GameType">The <see cref="SimpleGame"/> subclass that this hub manages.</typeparam>
 	/// <typeparam name="IMultiplayerClient">An interface, implementing <see cref="IMultiplayerGameClient"/>, that defines methods available on the client
 	/// for the game represented by the concrete subclass' implementation.</typeparam>
-	public abstract class MultiplayerGameHub<IMultiplayerClient> : UsernameAwareHub<IMultiplayerClient>
+	public abstract class MultiplayerGameHub<GameType, IMultiplayerClient> : UsernameAwareHub<IMultiplayerClient>
+		where GameType: SimpleGame
 		where IMultiplayerClient: class, IMultiplayerGameClient
 	{
+		/// <summary>
+		/// The gameId this connection has joined. This is provided in the "id" query string by the client.
+		/// </summary>
+		protected string GameId { get { return Context.GetHttpContext()!.Request.Query["id"]; } }
+
+		protected string SpectatorGroup { get { return $"Spectator-{GameId}"; } }
+
+		protected GameType ActiveGame
+		{
+			get
+			{
+				SimpleGame? game = GameService.GetGame(GameId);
+
+				if (game is null)
+				{
+					throw new NullReferenceException("The specified game is either no longer active, or never existed.");
+				}
+
+				if (game is not GameType value)
+				{
+					//TODO: I'm not sure if this error message is correct.
+					throw new InvalidOperationException($"{GetType().Name} is only capable of handling active {typeof(GameType)} games.");
+				}
+
+				return value;
+			}
+		}
+
+		protected Player CurrentPlayer
+		{
+			get
+			{
+				if (GetCallerUsername(out string username) && ActiveGame.GetPlayer(username) is Player player)
+					return player;
+
+				throw new InvalidOperationException($"The current connection does not represent an active player in this game: {GameId}");
+			}
+		}
+
+		protected int CurrentPlayerNumber { get { return CurrentPlayer.PlayerNumber; } }
+
 		public async override Task OnConnectedAsync()
 		{
-			/*TODO
-			 * Place the user into a group for their game; maybe pull it from their session?
-			 * Notify other users in the group that the user connected.
-			 * Tell the new user who else is already there.
-			 * Start the game, if appropriate.
-			 * 
-			 * If the user is rejoining after a lost connection, subclass will send them information about the game;
-			 *	but we need to remove their forfeit timeout.
-			 */
+			try
+			{
+				if (GetCallerUsername(out string username))
+				{
+					await Groups.AddToGroupAsync(Context.ConnectionId, GameId);
+
+					bool startGame = ActiveGame.PlayerIsReady(CurrentPlayer);
+
+					//TODO: Spectating is not implemented, yet; but when it is, replace the empty array with the spectators.
+					await Clients.Caller.UpdateVisiblePlayers(ActiveGame.GetPlayerNames(), Array.Empty<string>());
+					await OnJoinedGame();
+
+					await Clients.OthersInGroup(GameId).PlayerConnected(username, CurrentPlayerNumber);
+
+					if (startGame)
+					{
+						await Clients.Group(GameId).StartGame();
+					}
+					else if (ActiveGame.Started)
+					{
+						//Game already started; so this player must be rejoining.
+						GameService.CancelForfeitTimeout(GameId, CurrentPlayer);
+					}
+				}
+			}
+			catch (NullReferenceException)
+			{
+				await Clients.Caller.EndGame();
+			}
+			
 			await base.OnConnectedAsync();
 		}
 
 		/// <summary>
 		/// Called when a user joins/rejoins an ongoing game.
+		/// <br></br><br></br>
+		/// Information about the current game can be retrieved from the <see cref="ActiveGame"/> property.
 		/// </summary>
-		protected abstract Task OnJoinedGame(string gameId);
+		protected abstract Task OnJoinedGame();
 
 		public async override Task OnDisconnectedAsync(Exception? exception)
 		{
-			/*TODO
-			 * Remove the user from their group.
-			 * Notify the other users in the group that the user disconnected.
-			 * If there is no one left in the group, shut it down; notify game service to end the game.
-			 * 
-			 * If the game is ongoing, set a timeout for the missing player before forfeiting them; -- HOW???
-			 *	If the game can no longer continue, prevent reconnection after the timeout ends, otherwise allow their return as a spectator.
-			 */
+			const int TimeoutSeconds = 60;
+			try
+			{
+				if (GetCallerUsername(out string username))
+				{
+					await Groups.RemoveFromGroupAsync(Context.ConnectionId, GameId);
+
+					bool mustForfeit = ActiveGame.PlayerCannotLeaveWithoutForfeiting();
+					ActiveGame.PlayerIsReady(CurrentPlayer, false);
+
+					bool gameShouldEnd = !ActiveGame.HasRemainingReadyPlayers();
+
+					if (gameShouldEnd)
+					{
+						//Means all competing players are gone.
+						await Clients.Group(SpectatorGroup).EndGame();
+						ActiveGame.EndGame();
+					}
+					else
+					{
+						if (exception is null)
+						{
+							//Player left on purpose?
+							await Clients.Group(GameId).PlayerDisconnected(CurrentPlayer.Username, CurrentPlayerNumber, 0);
+							await Clients.Group(GameId).PlayerForfeited(CurrentPlayer.Username, CurrentPlayerNumber, false);
+
+							if (mustForfeit)
+							{
+								//TODO: Track that the player lost in their stats.
+							}
+						}
+						else
+						{
+							await Clients.Group(GameId).PlayerDisconnected(CurrentPlayer.Username, CurrentPlayerNumber, TimeoutSeconds);
+
+							if (mustForfeit)
+							{
+								GameService.AddForfeitTimeout<GameType, IMultiplayerClient>(GetType(), GameId, CurrentPlayer, TimeoutSeconds);
+							}
+						}
+					}
+				}
+			}
+			catch (NullReferenceException)
+			{
+				//Likely an invalid user...
+				//Do nothing; they just disconnected.
+			}
+
 			await base.OnDisconnectedAsync(exception);
+		}
+
+		public static async void OnForfeitTimeout<THub, TGame, TClient>(IHubContext<THub, TClient> context, string gameId, Player player)
+			where THub : MultiplayerGameHub<TGame, TClient>
+			where TGame : GameType
+			where TClient : class, IMultiplayerClient
+		{
+			await context!.Clients.Group(gameId).PlayerForfeited(player.Username, player.PlayerNumber, true);
 		}
 	}
 }
