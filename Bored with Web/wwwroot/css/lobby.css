@@ -1,0 +1,25 @@
+﻿
+.lobby-connection-connected {
+	background-color: rgb(202, 178, 68);
+}
+
+.lobby-connection-ready {
+	background-color: lime;
+}
+
+.lobby-connection-disconnected {
+	background-color: rgb(216, 21, 21);
+}
+
+.lobby-not-ready {
+	color: rgb(216, 21, 21);
+}
+
+.lobby-active-user {
+	color: seagreen !important;
+	font-weight: bold;
+}
+
+.player-list > li:hover {
+	background-color: lightgoldenrodyellow;
+}

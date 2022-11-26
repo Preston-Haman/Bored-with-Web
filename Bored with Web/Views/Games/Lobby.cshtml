@@ -1,4 +1,5 @@
-﻿@model GameInfoViewModel
+﻿@using Bored_with_Web.Hubs
+@model GameInfoViewModel
 
 @{
 	ViewData["Title"] = $"{Model!.Info.Title} Lobby";
@@ -6,78 +7,85 @@
 
 @section Head
 {
+	<script src="~/js/signalr/dist/browser/signalr.js"></script>
 	@{
 		string chatGroup = $"Lobby-{Model.Info.RouteId}";
 	}
 	<partial name="_Chat" model="@chatGroup"/>
+
+	<link rel="stylesheet" href="~/css/lobby.css">
+
+	@* Specify Lobby Constants *@
+	<script>
+		@{ string url = $"/{nameof(GameLobbyHub)}?game={Model.Info.RouteId}"; }
+		@* Connection Builder *@
+		const LOBBY_CONNECTION_BUILDER = new signalR.HubConnectionBuilder().withUrl("@url");
+
+		@* Client events *@
+		const CE_LOBBY_GAME_CREATED = "@nameof(IGameLobbyClient.GameCreated)";
+		const CE_LOBBY_GAME_ENDED = "@nameof(IGameLobbyClient.GameEnded)";
+		const CE_LOBBY_PLAYER_CONNECTED = "@nameof(IGameLobbyClient.PlayerConnected)";
+		const CE_LOBBY_PLAYER_IS_READY = "@nameof(IGameLobbyClient.PlayerIsReady)";
+		const CE_LOBBY_PLAYER_DISCONNECTED = "@nameof(IGameLobbyClient.PlayerDisconnected)";
+		const CE_LOBBY_UPDATE_GAMES = "@nameof(IGameLobbyClient.UpdateGames)";
+		const CE_LOBBY_UPDATE_PLAYERS = "@nameof(IGameLobbyClient.UpdatePlayers)";
+		const CE_LOBBY_SERVER_REQUESTS_DISCONNECT = "@nameof(IGameLobbyClient.ServerRequestsDisconnect)";
+
+		@* Server events *@
+		const SE_READY = "@nameof(GameLobbyHub.OnReady)";
+		const SE_NOT_READY = "@nameof(GameLobbyHub.OnNotReady)";
+	</script>
+	<script src="~/js/hubs/game-lobby.js"></script>
 }
 
 <partial name="_GameInfo.cshtml" model="@Model" />
-<main>
-	<!-- TODO: Control Colour with CSS classes through custom script -->
-	<div class="mb-2 border border-info rounded" style="text-align: center; max-width: 800px; margin-top: 1.5em;">
-		<!-- TODO: Change text based on current connection state -->
-		<p style="margin: 0.2em;">Connecting...</p>
-	</div>
-	
-	<div class="ms-0 me-0 mb-1 row bg-light" style="max-width: 800px; min-height: 22em;">
-		<!-- TODO: Populate this area based on real-time data from the server -->
-		<!-- TODO: When a player hovers over an li in player-list, adjust the background to highlight them -->
-		<div id="player-list" class="pe-0 col-md-4 border border-info rounded user-select-none" style="padding-left: 0.5em;">
-			<div class="position-relative">
-				<div class="ps-1 py-2 position-absolute start-0 end-0 top-0 bottom-0" style="min-height: 22em; overflow: auto;">
-					<div id="in-progress">
-						<div class="user-select-none" role="button" data-bs-toggle="collapse" data-bs-target=".progress-list">
-							<h6 style="display: inline;">Games in Progress</h6>
-							<div style="float: right;">
-								<svg class="collapse progress-list bi bi-caret-left-fill" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-									<path d="m3.86 8.753 5.482 4.796c.646.566 1.658.106 1.658-.753V3.204a1 1 0 0 0-1.659-.753l-5.48 4.796a1 1 0 0 0 0 1.506z" />
-								</svg>
-								<svg class="collapse progress-list show bi bi-caret-down-fill" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-									<path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z" />
-								</svg>
-							</div>
+<div class="mb-2 border border-info rounded" style="text-align: center; max-width: 800px; margin-top: 1.5em;">
+	<p id="connection-indicator" style="margin: 0.2em;">Connecting...</p>
+</div>
+
+<div class="ms-0 me-0 mb-1 row bg-light" style="max-width: 800px; min-height: 22em;">
+	<div id="player-list" class="pe-0 col-md-4 border border-info rounded user-select-none" style="padding-left: 0.5em;">
+		<div class="position-relative">
+			<div class="ps-1 py-2 position-absolute start-0 end-0 top-0 bottom-0" style="min-height: 22em; overflow: auto;">
+				<div id="in-progress">
+					<div class="user-select-none" role="button" data-bs-toggle="collapse" data-bs-target=".progress-list">
+						<h6 style="display: inline;">Games in Progress</h6>
+						<div style="float: right;">
+							<svg class="collapse progress-list bi bi-caret-left-fill" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+								<path d="m3.86 8.753 5.482 4.796c.646.566 1.658.106 1.658-.753V3.204a1 1 0 0 0-1.659-.753l-5.48 4.796a1 1 0 0 0 0 1.506z" />
+							</svg>
+							<svg class="collapse progress-list show bi bi-caret-down-fill" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+								<path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z" />
+							</svg>
 						</div>
-						<ul class="progress-list ms-1 ps-4 text-muted collapse show" style="list-style-type: none;">
-							<!-- TODO: Allow the player to spectate these -->
-							<li role="button">Player1 vs Player2</li>
-							<li role="button">Player3 vs Player4</li>
-						</ul>
 					</div>
-					<div id="lobby-players">
-						<div class="user-select-none" role="button" data-bs-toggle="collapse" data-bs-target=".player-list">
-							<h6 style="display: inline;">Players in Lobby</h6>
-							<div style="float: right;">
-								<svg class="collapse player-list bi bi-caret-left-fill" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-									<path d="m3.86 8.753 5.482 4.796c.646.566 1.658.106 1.658-.753V3.204a1 1 0 0 0-1.659-.753l-5.48 4.796a1 1 0 0 0 0 1.506z" />
-								</svg>
-								<svg class="collapse player-list show bi bi-caret-down-fill" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-									<path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z" />
-								</svg>
-							</div>
+					<ul class="progress-list ms-1 ps-4 text-muted collapse show" style="list-style-type: none;"></ul>
+				</div>
+				<div id="lobby-players">
+					<div class="user-select-none" role="button" data-bs-toggle="collapse" data-bs-target=".player-list">
+						<h6 style="display: inline;">Players in Lobby</h6>
+						<div style="float: right;">
+							<svg class="collapse player-list bi bi-caret-left-fill" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+								<path d="m3.86 8.753 5.482 4.796c.646.566 1.658.106 1.658-.753V3.204a1 1 0 0 0-1.659-.753l-5.48 4.796a1 1 0 0 0 0 1.506z" />
+							</svg>
+							<svg class="collapse player-list show bi bi-caret-down-fill" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+								<path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z" />
+							</svg>
 						</div>
-						<ul class="player-list ms-1 ps-4 text-muted collapse show" style="list-style-type: none;">
-							<li>Player5</li>
-							<!-- TODO: Make the user's player entry standout -->
-							<li class="lobby-active-user">Player6</li>
-							<li>Player7</li>
-							<li>Player8</li>
-							<li>Player9</li>
-							<li>Player10</li>
-						</ul>
 					</div>
+					<ul class="player-list ms-1 ps-4 text-muted collapse show" style="list-style-type: none;"></ul>
 				</div>
 			</div>
 		</div>
-		<div class="col-md-8 position-relative" style="padding-right: 0;">
-			<div class="border border-info rounded position-absolute start-0 end-0 top-0" style="bottom: 3em; padding: 0.5em; margin-left: 10px; overflow: auto;">
-				<ul id="chat-messages" class="ms-0 mb-0 ps-1" style="list-style-type: none;"></ul>
-			</div>
-			<input id="chat-input" disabled class="bg-light border border-info rounded position-absolute bottom-0 start-0 end-0" type="text" name="chat-input" placeholder="Send a message..." style="padding: 0.5em; margin-left: 10px;">
+	</div>
+	<div class="col-md-8 position-relative" style="padding-right: 0;">
+		<div class="border border-info rounded position-absolute start-0 end-0 top-0" style="bottom: 3em; padding: 0.5em; margin-left: 10px; overflow: auto;">
+			<ul id="chat-messages" class="ms-0 mb-0 ps-1" style="list-style-type: none;"></ul>
 		</div>
+		<input id="chat-input" disabled class="bg-light border border-info rounded position-absolute bottom-0 start-0 end-0" type="text" name="chat-input" placeholder="Send a message..." style="padding: 0.5em; margin-left: 10px;">
 	</div>
-	<div class="ms-0 position-relative" style="padding: 20px; margin: 0px 12px 10px 12px; max-width: 800px;">
-		<button id="lobby-disconnect" class="btn btn-secondary position-absolute start-0 top-0">Disconnect</button>
-		<button id="chat-send" disabled class="btn btn-secondary position-absolute end-0 top-0">Send</button>
-	</div>
-</main>
+</div>
+<div class="ms-0 position-relative" style="padding: 20px; margin: 0px 12px 10px 12px; max-width: 800px;">
+	<button hidden id="lobby-disconnect" class="btn btn-secondary position-absolute start-0 top-0">Disconnect</button>
+	<button id="chat-send" disabled class="btn btn-secondary position-absolute end-0 top-0">Send</button>
+</div>
