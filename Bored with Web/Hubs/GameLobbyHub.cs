@@ -60,7 +60,8 @@ namespace Bored_with_Web.Hubs
 		/// lobby's list of players. The provided names will include the name of the player that just connected.
 		/// </summary>
 		/// <param name="playerNames">The names of all the players in the lobby.</param>
-		Task UpdatePlayers(string[] playerNames);
+		/// <param name="readyPlayers">The ready status of the specified players.</param>
+		Task UpdatePlayers(string[] playerNames, bool[] readyPlayers);
 
 		/// <summary>
 		/// Called when the server wants the client to disconnect. Implementors should close the connection,
@@ -89,7 +90,9 @@ namespace Bored_with_Web.Hubs
 					GameLobby lobby = GameService.AddPlayerToLobby(new Player(username), GameRouteId);
 					await Groups.AddToGroupAsync(Context.ConnectionId, lobby.LobbyGroup);
 					await Clients.Caller.UpdateGames(GameService.GetAllGameIdsFor(lobby.LobbyGroup));
-					await Clients.Caller.UpdatePlayers((from Player p in lobby.Players select p.Username).ToArray());
+
+					Player[] players = lobby.Players.ToArray();
+					await Clients.Caller.UpdatePlayers(Array.ConvertAll(players, player => player.Username), Array.ConvertAll(players, player => player.Ready));
 					await Clients.OthersInGroup(lobby.LobbyGroup).PlayerConnected(username);
 				}
 				else
@@ -97,7 +100,9 @@ namespace Bored_with_Web.Hubs
 					//Joining the lobby again; perhaps on another device.
 					await Groups.AddToGroupAsync(Context.ConnectionId, oldLobby!.LobbyGroup);
 					await Clients.Caller.UpdateGames(GameService.GetAllGameIdsFor(oldLobby.LobbyGroup));
-					await Clients.Caller.UpdatePlayers((from Player p in oldLobby.Players select p.Username).ToArray());
+
+					Player[] players = oldLobby.Players.ToArray();
+					await Clients.Caller.UpdatePlayers(Array.ConvertAll(players, player => player.Username), Array.ConvertAll(players, player => player.Ready));
 				}
 			}
 			
