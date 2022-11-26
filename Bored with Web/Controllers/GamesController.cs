@@ -60,7 +60,7 @@ namespace Bored_with_Web.Controllers
 		/// </summary>
 		/// <param name="id">The RouteId of the game the user is trying to play.</param>
 		/// <param name="game">Part of the query string; the gameId for the game, as assigned by the <see cref="GameService"/>.</param>
-		public IActionResult Play(string? id, string? game)
+		public IActionResult Play(string? id, [FromQuery] string? game)
 		{
 			//id is RouteId of the game
 			string? username = HttpContext.Session.GetUsername();
