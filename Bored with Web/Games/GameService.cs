@@ -91,7 +91,7 @@ namespace Bored_with_Web.Games
 			string gameId;
 			lock (ID_LOCK)
 			{
-				gameId = $"{gameRouteId}#{nextGameId++}";
+				gameId = $"{nextGameId++}";
 			}
 
 			GameType game = new();
