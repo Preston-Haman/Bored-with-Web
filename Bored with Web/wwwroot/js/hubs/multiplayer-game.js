@@ -4,6 +4,11 @@ let defaultMultiplayerGameConnection;
 var isUserTurn = false;
 
 /**
+ * The number representing the user in this game.
+ */
+var ourPlayerNumber = 0;
+
+/**
  * Associates default implementations for IMultiplayerGameClient with the given connection.
  * 
  * Use of the default implementations implies that certain conditions are met for the given webpage.
@@ -14,6 +19,7 @@ var isUserTurn = false;
 function useDefaultMultiplayerGameConnectionEvents(connection) {
 	defaultMultiplayerGameConnection = connection;
 
+	connection.on(CE_MULTIPLAYER_GAME_SET_USER_PLAYER_NUMBER, setUserPlayerNumber);
 	connection.on(CE_MULTIPLAYER_GAME_PLAYER_CONNECTED, playerConnected);
 	connection.on(CE_MULTIPLAYER_GAME_PLAYER_DISCONNECTED, playerDisconnected);
 	connection.on(CE_MULTIPLAYER_GAME_PLAYER_FORFEITED, playerForfeited);
@@ -23,6 +29,15 @@ function useDefaultMultiplayerGameConnectionEvents(connection) {
 	connection.on(CE_MULTIPLAYER_GAME_START_GAME, startGame);
 	connection.on(CE_MULTIPLAYER_GAME_SET_PLAYER_TURN, setPlayerTurn);
 	connection.on(CE_MULTIPLAYER_GAME_END_GAME, endGame);
+}
+
+/**
+ * Sets the value of ourPlayerNumber to reflect the number on the server side.
+ * 
+ * @param {Number} userPlayerNumber - The numeric identifier of the user for the duration of the game.
+ */
+function setUserPlayerNumber(userPlayerNumber) {
+	ourPlayerNumber = userPlayerNumber;
 }
 
 /**
@@ -210,10 +225,9 @@ function startGame() {
  * 	 representing the players of the game ordered by their player number.
  * 
  * @param {Number} playerNumber - The numeric identifier of the player; this is unique to this game only.
- * @param {Boolean} isUs - Indicates that the active player is the user receiving the method call.
  */
-function setPlayerTurn(playerNumber, isUs) {
-	isUserTurn = isUs;
+function setPlayerTurn(playerNumber) {
+	isUserTurn = ourPlayerNumber == playerNumber;
 
 	let turnIndicator = document.getElementById("turn-indicator");
 	if (turnIndicator) {

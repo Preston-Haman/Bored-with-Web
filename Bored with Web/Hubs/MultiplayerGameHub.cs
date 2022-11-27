@@ -9,6 +9,13 @@ namespace Bored_with_Web.Hubs
 	public interface IMultiplayerGameClient
 	{
 		/// <summary>
+		/// Called when the user connects. Implementations should store <paramref name="userPlayerNumber"/>
+		/// for later; as it is how players are distinguished from each other.
+		/// </summary>
+		/// <param name="userPlayerNumber">The numeric identifier of the user for the duration of the game.</param>
+		Task SetUserPlayerNumber(int userPlayerNumber);
+
+		/// <summary>
 		/// Called when a player has connected. Implementations may use the provided information
 		/// to update their representation of the game.
 		/// <br></br><br></br>
@@ -59,8 +66,9 @@ namespace Bored_with_Web.Hubs
 		/// The client's own name will appear in the list of players.
 		/// </summary>
 		/// <param name="players">The names of the players in the game, in the order of their player number (offset by 1; index 0 is player 1, and so on).</param>
+		/// <param name="playerNumbers">The numeric representation of each player listed in <paramref name="players"/>.</param>
 		/// <param name="spectators">The names of the users spectating the game.</param>
-		Task UpdateVisiblePlayers(string[] players, string[] spectators);
+		Task UpdateVisiblePlayers(string[] players, int[] playerNumbers, string[] spectators);
 
 		/// <summary>
 		/// Called when all the players have connected, and the game is ready to begin. Implementors may use this
@@ -74,8 +82,7 @@ namespace Bored_with_Web.Hubs
 		/// necessary, they may also disable, or enable game-related inputs.
 		/// </summary>
 		/// <param name="playerNumber">The numeric identifier of the player; this is unique to this game only.</param>
-		/// <param name="isUs">Indicates that the active player is the user receiving the method call.</param>
-		Task SetPlayerTurn(int playerNumber, bool isUs);
+		Task SetPlayerTurn(int playerNumber);
 
 		/// <summary>
 		/// Called when the game has fully ended. The connection should be closed. Implementors may allow the user
@@ -97,9 +104,9 @@ namespace Bored_with_Web.Hubs
 		where IMultiplayerClient: class, IMultiplayerGameClient
 	{
 		/// <summary>
-		/// The gameId this connection has joined. This is provided in the "id" query string by the client.
+		/// The gameId this connection has joined. This is provided in the "game" query string by the client.
 		/// </summary>
-		protected string GameId { get { return Context.GetHttpContext()!.Request.Query["id"]; } }
+		protected string GameId { get { return Context.GetHttpContext()!.Request.Query["game"]; } }
 
 		protected string SpectatorGroup { get { return $"Spectator-{GameId}"; } }
 
@@ -147,8 +154,12 @@ namespace Bored_with_Web.Hubs
 
 					bool startGame = ActiveGame.PlayerIsReady(CurrentPlayer);
 
+					await Clients.Caller.SetUserPlayerNumber(CurrentPlayerNumber);
+
+					string[] playerNames = (from p in ActiveGame.Players orderby p.PlayerNumber select p.Username).ToArray();
+					int[] playerNumbers = (from p in ActiveGame.Players orderby p.PlayerNumber select p.PlayerNumber).ToArray();
 					//TODO: Spectating is not implemented, yet; but when it is, replace the empty array with the spectators.
-					await Clients.Caller.UpdateVisiblePlayers(ActiveGame.GetPlayerNames(), Array.Empty<string>());
+					await Clients.Caller.UpdateVisiblePlayers(playerNames, playerNumbers, Array.Empty<string>());
 					await OnJoinedGame();
 
 					await Clients.OthersInGroup(GameId).PlayerConnected(username, CurrentPlayerNumber);
@@ -204,17 +215,26 @@ namespace Bored_with_Web.Hubs
 						if (exception is null)
 						{
 							//Player left on purpose?
-							await Clients.Group(GameId).PlayerDisconnected(CurrentPlayer.Username, CurrentPlayerNumber, 0);
-							await Clients.Group(GameId).PlayerForfeited(CurrentPlayer.Username, CurrentPlayerNumber, false);
+							//Cache the game and player number because it might be removed from GameService if PlayerLeft returns true.
+							SimpleGame activeGame = ActiveGame;
+							int currentPlayerNumber = CurrentPlayerNumber;
+							bool gameEnded = ActiveGame.PlayerLeft(CurrentPlayer);
 
+							await Clients.Group(GameId).PlayerDisconnected(username, currentPlayerNumber, 0);
 							if (mustForfeit)
 							{
 								//TODO: Track that the player lost in their stats.
+								await Clients.Group(GameId).PlayerForfeited(username, currentPlayerNumber, false);
+							}
+
+							if (gameEnded)
+							{
+								await Clients.Group(GameId).EndGame();
 							}
 						}
 						else
 						{
-							await Clients.Group(GameId).PlayerDisconnected(CurrentPlayer.Username, CurrentPlayerNumber, TimeoutSeconds);
+							await Clients.Group(GameId).PlayerDisconnected(username, CurrentPlayerNumber, TimeoutSeconds);
 
 							if (mustForfeit)
 							{
@@ -226,19 +246,24 @@ namespace Bored_with_Web.Hubs
 			}
 			catch (NullReferenceException)
 			{
-				//Likely an invalid user...
+				//Likely an invalid user or a game that no longer exists.
 				//Do nothing; they just disconnected.
 			}
 
 			await base.OnDisconnectedAsync(exception);
 		}
 
-		public static async void OnForfeitTimeout<THub, TGame, TClient>(IHubContext<THub, TClient> context, string gameId, Player player)
+		public static async void OnForfeitTimeout<THub, TGame, TClient>(IHubContext<THub, TClient> context, string gameId, Player player, bool gameEnded)
 			where THub : MultiplayerGameHub<TGame, TClient>
 			where TGame : GameType
 			where TClient : class, IMultiplayerClient
 		{
 			await context!.Clients.Group(gameId).PlayerForfeited(player.Username, player.PlayerNumber, true);
+
+			if (gameEnded)
+			{
+				await context.Clients.Group(gameId).EndGame();
+			}
 		}
 	}
 }

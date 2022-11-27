@@ -82,7 +82,7 @@ namespace Connect_X
 		/// <summary>
 		/// The token representing the active player.
 		/// </summary>
-		private BoardToken activePlayer = BoardToken.Player1;
+		public BoardToken ActivePlayer { get; private set; } = BoardToken.Player1;
 
 		/// <summary>
 		/// Whether or not this game is ongoing. If the game has ended, but has not been cleared, then this will be false.
@@ -120,10 +120,10 @@ namespace Connect_X
 		/// <param name="column">The column in which to play the <paramref name="token"/>.</param>
 		public void PlayToken(IConnectionGameEventHandler handler, BoardToken token, byte row, byte column)
 		{
-			if (token != activePlayer || !board.IsTokenSlotAvailable(row, column))
+			if (token != ActivePlayer || !board.IsTokenSlotAvailable(row, column))
 			{
 				BoardToken existingToken = board.GetTokenAtLocation(row, column);
-				if (handler.ShouldRefreshBoardOnInvalidPlay(token, existingToken, token == activePlayer, row, column))
+				if (handler.ShouldRefreshBoardOnInvalidPlay(token, existingToken, token == ActivePlayer, row, column))
 				{
 					handler.RefreshBoard(board.Slots);
 				}
@@ -136,13 +136,14 @@ namespace Connect_X
 			
 			if (board.HasTokenSequenceAtLocation(row, column) || board.IsFull)
 			{
+				IsActive = false;
 				handler.TokenPlayed(token, BoardToken.None, row, column);
-				handler.GameEnded(board.IsFull ? BoardToken.None : activePlayer);
+				handler.GameEnded(board.IsFull ? BoardToken.None : ActivePlayer);
 			}
 			else
 			{
 				CyclePlayerTurn();
-				handler.TokenPlayed(token, activePlayer, row, column);
+				handler.TokenPlayed(token, ActivePlayer, row, column);
 			}
 		}
 
@@ -172,7 +173,7 @@ namespace Connect_X
 			if (!attempted)
 			{
 				//Player attempted to play in a column that was full; the attempted row is out of bounds.
-				if (handler.ShouldRefreshBoardOnInvalidPlay(token, BoardToken.None, token == activePlayer, board.Rows, column))
+				if (handler.ShouldRefreshBoardOnInvalidPlay(token, BoardToken.None, token == ActivePlayer, board.Rows, column))
 				{
 					handler.RefreshBoard(board.Slots);
 				}
@@ -229,24 +230,24 @@ namespace Connect_X
 		{
 			//assert !IsActive;
 			board.Clear();
-			activePlayer = newActivePlayerToken;
+			ActivePlayer = newActivePlayerToken;
 			IsActive = true;
 			handler.ClearBoard(newActivePlayerToken);
 		}
 
 		/// <summary>
-		/// Changes <see cref="activePlayer"/> to the next player in line.
+		/// Changes <see cref="ActivePlayer"/> to the next player in line.
 		/// </summary>
 		private void CyclePlayerTurn()
 		{
 			//TODO: Consider a new name for this method.
-			if ((byte) activePlayer == playerCount)
+			if ((byte) ActivePlayer == playerCount)
 			{
-				activePlayer = BoardToken.Player1;
+				ActivePlayer = BoardToken.Player1;
 			}
 			else
 			{
-				activePlayer += 1;
+				ActivePlayer += 1;
 			}
 		}
 	}

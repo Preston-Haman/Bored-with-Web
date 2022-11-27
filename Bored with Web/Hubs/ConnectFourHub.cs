@@ -20,8 +20,7 @@ namespace Bored_with_Web.Hubs
 		/// [0][1][2]<br></br>
 		/// </summary>
 		/// <param name="board">A representation of the game board.</param>
-		/// <param name="ourPlayerNumber">The player number representing the user.</param>
-		Task Joined(byte[] board, int ourPlayerNumber);
+		Task Joined(byte[] board);
 
 		/// <summary>
 		/// Called when a player plays a token on the board. Implementations should update the specified
@@ -57,12 +56,13 @@ namespace Bored_with_Web.Hubs
 	/// </summary>
 	public class ConnectFourHub : MultiplayerGameHub<ConnectFour, IConnectFourClient>, IConnectionGameEventHandler
 	{
-#pragma warning disable CS1998 //These end up being async; but can't await it directly. Hope it works... :x
 		protected override async Task OnJoinedGame()
 		{
 			ActiveGame.RefreshBoard(this);
+			await Clients.Caller.SetPlayerTurn(ActiveGame.ActivePlayerNumber);
 		}
 
+#pragma warning disable CS1998 //This ends up being async; but can't await it directly. Hope it works... :x
 		/// <summary>
 		/// Called by the client when they attempt to play a token on the board in the given column.
 		/// </summary>
@@ -79,7 +79,8 @@ namespace Bored_with_Web.Hubs
 		public async Task ForfeitMatch()
 		{
 			//TODO: Add loss to stats
-			ActiveGame.Forfeit(this, CurrentPlayer, false);
+			ActiveGame.Forfeit(this, CurrentPlayer);
+			await Clients.Caller.BoardCleared();
 			await Clients.OthersInGroup(GameId).Rematch();
 		}
 
@@ -94,12 +95,22 @@ namespace Bored_with_Web.Hubs
 			await Clients.OthersInGroup(GameId).Rematch();
 		}
 
+		/// <summary>
+		/// Called by the client when they clear the board after their opponent challenged them to a rematch.
+		/// </summary>
+		public async Task AcceptRematch()
+		{
+			//TODO: Consider randomizing who has the first move instead of giving it to the challenged player.
+			ActiveGame.ClearBoard(this, CurrentPlayer);
+			await Clients.OthersInGroup(GameId).Rematch();
+		}
+
 		async void IConnectionGameEventHandler.ClearBoard(BoardToken newActivePlayer)
 		{
 			await Clients.Group(GameId).BoardCleared();
 
 			int nextPlayerNumber = (int) newActivePlayer;
-			await Clients.Group(GameId).SetPlayerTurn(nextPlayerNumber, nextPlayerNumber == CurrentPlayerNumber);
+			await Clients.Group(GameId).SetPlayerTurn(nextPlayerNumber);
 		}
 
 		async void IConnectionGameEventHandler.GameEnded(BoardToken winningPlayerToken)
@@ -110,7 +121,7 @@ namespace Bored_with_Web.Hubs
 
 		async void IConnectionGameEventHandler.RefreshBoard(BoardToken[] validBoard)
 		{
-			await Clients.Caller.Joined(Array.ConvertAll(validBoard, token => (byte) token), CurrentPlayerNumber);
+			await Clients.Caller.Joined(Array.ConvertAll(validBoard, token => (byte) token));
 		}
 
 		bool IConnectionGameEventHandler.ShouldRefreshBoardOnInvalidPlay(BoardToken attemptedPlayToken, BoardToken existingTokenInSlot, bool isActivePlayer, byte row, byte column)
@@ -124,7 +135,7 @@ namespace Bored_with_Web.Hubs
 			await Clients.Group(GameId).TokenPlayed((int) playedToken, row, column);
 
 			int nextPlayerNumber = (int) nextPlayerToken;
-			await Clients.Group(GameId).SetPlayerTurn(nextPlayerNumber, nextPlayerNumber == CurrentPlayerNumber);
+			await Clients.Group(GameId).SetPlayerTurn(nextPlayerNumber);
 		}
 	}
 }

@@ -12,6 +12,11 @@ namespace Bored_with_Web.Games
 		
 		const byte STANDARD_CONNECT_FOUR_SEQUENCE_LENGTH = 4;
 
+		/// <summary>
+		/// The number representing the player who is currently being allotted a turn.
+		/// </summary>
+		public int ActivePlayerNumber { get { return (int) board.ActivePlayer; } }
+
 		private readonly ConnectionGame board;
 
 		/// <summary>
@@ -51,11 +56,11 @@ namespace Bored_with_Web.Games
 			board.RefreshBoard(handler);
 		}
 
-		public void Forfeit(IConnectionGameEventHandler handler, Player player, bool isDisconnected)
+		public void Forfeit(IConnectionGameEventHandler handler, Player player)
 		{
 			Player internalPlayer = GetInternalPlayer(player);
 
-			board.Forfeit(handler, (BoardToken) internalPlayer.PlayerNumber, !isDisconnected);
+			board.Forfeit(handler, (BoardToken) internalPlayer.PlayerNumber, clearBoard: false);
 		}
 
 		public void ClearBoard(IConnectionGameEventHandler handler, Player hasNextTurn)
@@ -63,6 +68,18 @@ namespace Bored_with_Web.Games
 			Player internalPlayer = GetInternalPlayer(hasNextTurn);
 
 			board.ClearBoard(handler, (BoardToken) internalPlayer.PlayerNumber);
+		}
+
+		/// <summary>
+		/// Determines if a player can leave the match without it being considered a forfeiture.
+		/// If the game is active, then the player will have to forfeit the match if they leave.
+		/// <br></br><br></br>
+		/// See <see cref="ConnectionGame.IsActive"/> for more information.
+		/// </summary>
+		/// <returns>True if the player cannot leave without forfeiting the game; false otherwise.</returns>
+		public override bool PlayerCannotLeaveWithoutForfeiting()
+		{
+			return board.IsActive;
 		}
 	}
 }
