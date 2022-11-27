@@ -20,6 +20,6 @@
 	font-weight: bold;
 }
 
-.player-list > li:hover {
+.player-list > li:hover, .progress-list > li:hover {
 	background-color: lightgoldenrodyellow;
 }
