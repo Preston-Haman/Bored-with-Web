@@ -82,6 +82,9 @@ namespace Bored_with_Web.Controllers
 				return RedirectToAction(nameof(Lobby), new { id });
 			}
 
+			//Required by MultiplayerGameHub implementations.
+			ViewData["gameId"] = game;
+
 			//The current player count doesn't matter here
 			return View(new GameInfoViewModel(info, currentPlayerCount: 0, GameInfoViewState.PLAY));
 		}
