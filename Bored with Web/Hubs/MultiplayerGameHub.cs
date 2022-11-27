@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 namespace Bored_with_Web.Hubs
 {
 	/// <summary>
-	/// Defines methods that are available on the client side of a <see cref="MultiplayerGameHub{MultiplayerClient}"/>.
+	/// Defines methods that are available on the client side of a <see cref="MultiplayerGameHub{,}"/>.
 	/// </summary>
 	public interface IMultiplayerGameClient
 	{
