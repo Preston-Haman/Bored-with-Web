@@ -10,7 +10,7 @@
 			<a class="btn btn-info" role="button" asp-controller="Games" asp-action="Lobby" asp-route-id="@Model.Info.RouteId">Play Now</a>
 			break;
 		case GameInfoViewState.LOBBY:
-			<a class="btn btn-info" role="button" asp-controller="Games" asp-action="#" asp-route-id="@Model.Info.RouteId">Create a Private Match</a>
+			<a hidden class="btn btn-info" role="button" asp-controller="Games" asp-action="#" asp-route-id="@Model.Info.RouteId">Create a Private Match</a>
 			<button id="ready-button" class="btn btn-info">Ready</button>
 			break;
 		default:

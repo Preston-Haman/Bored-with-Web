@@ -1,0 +1,36 @@
+﻿@*
+	This partial view should be included in the Head section of the full view.
+	The full view should include the following:
+		A script reference to SignalR's JS library.
+	
+	The full view should also, optionally, include the following:
+		A script that calls useDefaultMultiplayerGameConnectionEvents, passing a HubConnection.
+		
+		The existence of an element with the id of "messages" that can have bootstrap alerts appended to it.
+
+		The existence of elements for the player names, with an id of "player-x"; where "x" is the player's number for the game.
+		OR The existence of a <ul class="player-list">
+
+		The existence of a <ul id="spectator-list">
+
+		The existence of elements containing the class "game-input" supporting the disabled attribute.
+
+		The existence of an element with an id of "turn-indicator" which is solely for elements representing the players of the game ordered by their player number.
+*@
+
+@using Bored_with_Web.Hubs
+
+<script>
+	@* Client events *@
+	const CE_MULTIPLAYER_GAME_SET_USER_PLAYER_NUMBER = "@nameof(IMultiplayerGameClient.SetUserPlayerNumber)";
+	const CE_MULTIPLAYER_GAME_PLAYER_CONNECTED = "@nameof(IMultiplayerGameClient.PlayerConnected)";
+	const CE_MULTIPLAYER_GAME_PLAYER_DISCONNECTED = "@nameof(IMultiplayerGameClient.PlayerDisconnected)";
+	const CE_MULTIPLAYER_GAME_PLAYER_FORFEITED = "@nameof(IMultiplayerGameClient.PlayerForfeited)";
+	const CE_MULTIPLAYER_GAME_SPECTATOR_CONNECTED = "@nameof(IMultiplayerGameClient.SpectatorConnected)";
+	const CE_MULTIPLAYER_GAME_SPECTATOR_DISCONNECTED = "@nameof(IMultiplayerGameClient.SpectatorDisconnected)";
+	const CE_MULTIPLAYER_GAME_UPDATE_VISIBlE_PLAYERS = "@nameof(IMultiplayerGameClient.UpdateVisiblePlayers)";
+	const CE_MULTIPLAYER_GAME_START_GAME = "@nameof(IMultiplayerGameClient.StartGame)";
+	const CE_MULTIPLAYER_GAME_SET_PLAYER_TURN = "@nameof(IMultiplayerGameClient.SetPlayerTurn)";
+	const CE_MULTIPLAYER_GAME_END_GAME = "@nameof(IMultiplayerGameClient.EndGame)";
+</script>
+<script src="~/js/hubs/multiplayer-game.js"></script>

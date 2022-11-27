@@ -1,6 +1,7 @@
 ﻿@*
 	This partial view should be included in the Head section of the full view.
 	The full view should include the following:
+		A script reference to SignalR's JS library.
 		A text input element marked with an id of chat-input.
 		A button element marked with an id of chat-send.
 		A ul element marked with an id of chat-messages.
@@ -10,7 +11,6 @@
 @model string //QueryString specifying what chat group this is for; example: "Lobby-Connect-Four"
 
 <link rel="stylesheet" href="~/css/chat.css">
-<script src="~/js/signalr/dist/browser/signalr.js"></script>
 
 <script>
 	@{ string url = $"/{nameof(ChatHub)}?group={Model}"; }

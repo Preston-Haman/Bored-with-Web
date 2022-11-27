@@ -1,11 +1,19 @@
-﻿var chatConnection;
+﻿
+/**
+ * The connection being used by SignalR to perform actions.
+ */
+var chatConnection;
 
+/**
+ * If the ability to send messages is enabled, or not.
+ * The value of this should only be set through the setIsSendEnabled method.
+ */
 let isSendEnabled = false;
 
-window.onload = function () {
+window.addEventListener("load", function () {
 	setIsSendEnabled(false);
 
-	initConnection();
+	initChatConnection();
 
 	document.getElementById("chat-input").onkeyup = function (e) {
 		if (e.key === "Enter") {
@@ -15,15 +23,23 @@ window.onload = function () {
 	};
 
 	document.getElementById("chat-send").onclick = sendMessage;
-}
+});
 
+/**
+ * Sets isSendEnabled to the given value.
+ * 
+ * @param {Boolean} enabled - The value to set.
+ */
 function setIsSendEnabled(enabled) {
 	document.getElementById("chat-send").disabled = !enabled;
 	document.getElementById("chat-input").disabled = !enabled;
 	isSendEnabled = enabled;
 }
 
-function initConnection() {
+/**
+ * Creates and starts the SignalR connection.
+ */
+function initChatConnection() {
 	chatConnection = CHAT_CONNECTION_BUILDER.build();
 
 	chatConnection.on(CHAT_RECEIVE_MESSAGE, receiveMessage);
@@ -36,6 +52,9 @@ function initConnection() {
 	});
 }
 
+/**
+ * Sends a message to the server through SignalR. The content of the message is retrieved from the page.
+ */
 function sendMessage() {
 	if (!isSendEnabled) return;
 
@@ -49,6 +68,13 @@ function sendMessage() {
 	}
 }
 
+/**
+ * Appends a message to the chat messages with the given user as the sender.
+ * 
+ * @param {String} user - The name of the user sending a message.
+ * @param {String} message - The message being sent.
+ * @param {Boolean} isActiveUser - If true, the message was sent by the user.
+ */
 function receiveMessage(user, message, isActiveUser) {
 	//<li><span class="chat-user-label user-select-none chat-active-user">user</span><span class="text-muted">message</span></li>
 	let item = document.createElement("li");

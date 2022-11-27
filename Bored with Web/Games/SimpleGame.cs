@@ -110,18 +110,6 @@
 		}
 
 		/// <summary>
-		/// Retrieves a list of usernames representing the competing players who are ready to play. The array's
-		/// indices are the corresponding player numbers minus 1 (i.e.: index 0 contains the username of player 1).
-		/// </summary>
-		/// <returns>A list of usernames representing the competing players who are ready to play.</returns>
-		public string[] GetPlayerNames()
-		{
-			return (from Player p in Players
-					orderby p.PlayerNumber
-					select p.Username).ToArray();
-		}
-
-		/// <summary>
 		/// Gets the player associated with the given <paramref name="username"/>. If no such player is competing
 		/// in this game, then null is returned.
 		/// </summary>
@@ -146,6 +134,26 @@
 		public virtual bool PlayerCannotLeaveWithoutForfeiting()
 		{
 			return true;
+		}
+
+		/// <summary>
+		/// Removes the specified player from the game. Returns true if this action has caused the game to end.
+		/// <br></br><br></br>
+		/// The default implementation found in <see cref="SimpleGame"/> will removed the <paramref name="player"/> from
+		/// <see cref="Players"/>, and end the game if the required number of players are no longer available.
+		/// </summary>
+		/// <param name="player">The player that is leaving the game.</param>
+		/// <param name="isConnectionTimeout">If the player's connection timed out or not.</param>
+		/// <returns>True if the game ends because this player left; false otherwise.</returns>
+		public virtual bool PlayerLeft(Player player, bool isConnectionTimeout = false)
+		{
+			Players.Remove(player);
+			if (Players.Count < Info.RequiredPlayerCount)
+			{
+				EndGame();
+				return true;
+			}
+			return false;
 		}
 
 		/// <summary>

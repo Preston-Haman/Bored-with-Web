@@ -91,7 +91,7 @@ namespace Bored_with_Web.Games
 			string gameId;
 			lock (ID_LOCK)
 			{
-				gameId = $"{gameRouteId}#{nextGameId++}";
+				gameId = $"{nextGameId++}";
 			}
 
 			GameType game = new();
@@ -156,7 +156,14 @@ namespace Bored_with_Web.Games
 
 				if (forfeit)
 				{
-					MultiplayerGameHub<TGame, TClient>.OnForfeitTimeout<THub, TGame, TClient>(context!, gameId, player);
+					//default to true because if the GameService isn't tracking it, then it ended.
+					bool gameEnded = true;
+					if (GetGame(gameId) is SimpleGame game)
+					{
+						gameEnded = game.PlayerLeft(player, isConnectionTimeout: true);
+					}
+					
+					MultiplayerGameHub<TGame, TClient>.OnForfeitTimeout<THub, TGame, TClient>(context!, gameId, player, gameEnded);
 				}
 			}
 		}

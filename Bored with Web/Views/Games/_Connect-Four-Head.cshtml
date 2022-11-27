@@ -1,0 +1,52 @@
+﻿@using Bored_with_Web.Hubs
+@{
+	int rows = ((int?) ViewData["rows"]) ?? 6;
+	int cols = ((int?) ViewData["cols"]) ?? 7;
+	string url = $"/{nameof(ConnectFourHub)}?game={ViewData["gameId"]}";
+}
+
+<script>
+	@* Client constants *@
+	const CONNECT_FOUR_CONNECTION_BUILDER = new signalR.HubConnectionBuilder().withUrl("@url");
+	const CONNECT_FOUR_ROWS = @rows;
+	const CONNECT_FOUR_COLUMNS = @cols;
+
+	@* Client events *@
+	const CE_CONNECT_FOUR_JOINED = "@nameof(IConnectFourClient.Joined)";
+	const CE_CONNECT_FOUR_TOKEN_PLAYED = "@nameof(IConnectFourClient.TokenPlayed)";
+	const CE_CONNECT_FOUR_MATCH_ENDED = "@nameof(IConnectFourClient.MatchEnded)";
+	const CE_CONNECT_FOUR_REMATCH = "@nameof(IConnectFourClient.Rematch)";
+	const CE_CONNECT_FOUR_BOARD_CLEARED = "@nameof(IConnectFourClient.BoardCleared)";
+
+	@* Server events *@
+	const SE_CONNECT_FOUR_PLAY_TOKEN = "@nameof(ConnectFourHub.PlayToken)";
+	const SE_CONNECT_FOUR_FORFEIT_MATCH = "@nameof(ConnectFourHub.ForfeitMatch)";
+	const SE_CONNECT_FOUR_REMATCH = "@nameof(ConnectFourHub.Rematch)";
+	const SE_CONNECT_FOUR_ACCEPT_REMATCH = "@nameof(ConnectFourHub.AcceptRematch)";
+</script>
+
+<style>
+	#turn-indicator {
+		@* Same as c4-board width *@
+		width: calc(@cols * 5em);
+	}
+	
+	.c4-board {
+		@* The height and width are a ratio (rows:columns); plus some extra on height to accommodate the buttons *@
+		height: calc(1em + 0.25em + calc(@rows * 5em) + 0.25em + 1.25em);
+		width: calc(@cols * 5em);
+
+		grid-template-rows: 1em 0.25em repeat(@rows, 5em) 0.25em 1.25em;
+		grid-template-columns: repeat(@cols, 5em);
+	}
+
+	#c4-clear-btn {
+		@* The same as c4-board height, minus what's used by the button *@
+		top: calc(1em + 0.25em + calc(@rows * 5em) + 0.25em);
+		grid-column: 1 / span @cols;
+	}
+
+	.c4-cosmetic {
+		grid-column: 1 / span @cols;
+	}
+</style>

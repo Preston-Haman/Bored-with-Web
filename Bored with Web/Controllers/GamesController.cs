@@ -60,7 +60,7 @@ namespace Bored_with_Web.Controllers
 		/// </summary>
 		/// <param name="id">The RouteId of the game the user is trying to play.</param>
 		/// <param name="game">Part of the query string; the gameId for the game, as assigned by the <see cref="GameService"/>.</param>
-		public IActionResult Play(string? id, string? game)
+		public IActionResult Play(string? id, [FromQuery] string? game)
 		{
 			//id is RouteId of the game
 			string? username = HttpContext.Session.GetUsername();
@@ -81,6 +81,9 @@ namespace Bored_with_Web.Controllers
 			{
 				return RedirectToAction(nameof(Lobby), new { id });
 			}
+
+			//Required by MultiplayerGameHub implementations.
+			ViewData["gameId"] = game;
 
 			//The current player count doesn't matter here
 			return View(new GameInfoViewModel(info, currentPlayerCount: 0, GameInfoViewState.PLAY));
