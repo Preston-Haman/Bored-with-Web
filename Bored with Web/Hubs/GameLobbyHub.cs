@@ -74,6 +74,9 @@ namespace Bored_with_Web.Hubs
 		Task ServerRequestsDisconnect();
 	}
 
+	/// <summary>
+	/// A basic implementation for managing the connection of players waiting in the lobby.
+	/// </summary>
 	public class GameLobbyHub : UsernameAwareHub<IGameLobbyClient>
 	{
 		/// <summary>
@@ -204,6 +207,16 @@ namespace Bored_with_Web.Hubs
 			await base.OnDisconnectedAsync(exception);
 		}
 
+		/// <summary>
+		/// Notifies clients waiting in the specified <paramref name="lobbyGroup"/> that the game represented by
+		/// the given <paramref name="gameId"/> has ended.
+		/// <br></br><br></br>
+		/// This method is presented as a way for calling clients from outside the hub without relying on external
+		/// classes to understand how the clients should be notified.
+		/// </summary>
+		/// <param name="context">The context providing access to the SignalR clients for the lobby group; this should be created through DI.</param>
+		/// <param name="lobbyGroup">The lobby to notify of this game's end.</param>
+		/// <param name="gameId">The unique, human readable, identifier for the game that ended.</param>
 		public static async void OnGameEnded(IHubContext<GameLobbyHub, IGameLobbyClient> context, string lobbyGroup, string gameId)
 		{
 			await context.Clients.Group(lobbyGroup).GameEnded(gameId);

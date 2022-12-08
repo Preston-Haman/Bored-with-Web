@@ -1,10 +1,25 @@
 ﻿namespace Bored_with_Web.Games
 {
+	/// <summary>
+	/// An attribute that must be applied to concrete implementations of <see cref="SimpleGame"/>.
+	/// <br></br><br></br>
+	/// This attribute defines what game the implementation is for, based on the game's <see cref="GameInfo.RouteId"/>.
+	/// </summary>
 	[AttributeUsage(AttributeTargets.Class)]
 	public class GameAttribute : Attribute
 	{
+		/// <summary>
+		/// The game being represented by the class this attribute is applied to.
+		/// </summary>
 		public GameInfo Info { get; }
 
+		/// <summary>
+		/// Specifies the <see cref="GameInfo.RouteId"/> of the game being represented by the class this attribute is
+		/// applied to. If the <see cref="GameInfo.RouteId"/> is not recognized by <see cref="CanonicalGames"/>,
+		/// then an <see cref="ArgumentException"/> is thrown.
+		/// </summary>
+		/// <param name="gameRouteId">The title of the game, as it appears in the website url.</param>
+		/// <exception cref="ArgumentException">If the <paramref name="gameRouteId"/> is invalid.</exception>
 		public GameAttribute(string gameRouteId)
 		{
 			if (CanonicalGames.GetGameInfoByRouteId(gameRouteId) is not GameInfo game)
@@ -16,6 +31,7 @@
 		}
 	}
 
+	//TODO: Integrate into SimpleGame; I see no reason for this interface to exist separately.
 	public interface ISimpleGameCreation
 	{
 		/// <summary>
@@ -36,14 +52,32 @@
 	/// </summary>
 	public abstract class SimpleGame : ISimpleGameCreation
 	{
+		/// <summary>
+		/// Information about the game represented.
+		/// </summary>
 		public GameInfo Info { get; protected set; } = null!;
 
+		/// <summary>
+		/// The unique, human readable, identifier of this game instance.
+		/// </summary>
 		public string GameId { get; protected set; } = null!;
 
+		/// <summary>
+		/// The set of players competing in this game.
+		/// </summary>
 		public HashSet<Player> Players { get; } = new();
 
+		/// <summary>
+		/// A publisher of the event of this game ending.
+		/// <br></br><br></br>
+		/// Subscribers may register directly, and will be notified of this game ending.
+		/// </summary>
 		public event EventHandler<SimpleGame>? OnGameEnded;
 
+		/// <summary>
+		/// Whether this game has started or not. This is defined by all the players
+		/// who are participating in this game having been marked as ready (see <see cref="PlayerIsReady"/>).
+		/// </summary>
 		public bool Started { get; private set; } = false;
 
 		public void CreateGame(GameInfo info, string gameId, params Player[] players)
