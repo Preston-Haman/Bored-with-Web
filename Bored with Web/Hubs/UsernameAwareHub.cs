@@ -2,6 +2,10 @@
 
 namespace Bored_with_Web.Hubs
 {
+	/// <summary>
+	/// A simple Hub subclass that is aware of the username within the user's session data.
+	/// </summary>
+	/// <typeparam name="IClient">The interface representing methods available on the client side.</typeparam>
 	public abstract class UsernameAwareHub<IClient> : Hub<IClient>
 		where IClient: class
 	{

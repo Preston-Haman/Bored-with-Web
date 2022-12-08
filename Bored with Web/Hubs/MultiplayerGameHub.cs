@@ -108,8 +108,14 @@ namespace Bored_with_Web.Hubs
 		/// </summary>
 		protected string GameId { get { return Context.GetHttpContext()!.Request.Query["game"]; } }
 
+		/// <summary>
+		/// The group name for connections that joined this game as a spectator.
+		/// </summary>
 		protected string SpectatorGroup { get { return $"Spectator-{GameId}"; } }
 
+		/// <summary>
+		/// The <see cref="SimpleGame"/> implementation that is storing all the internal state for the game this hub is managing connections for.
+		/// </summary>
 		protected GameType ActiveGame
 		{
 			get
@@ -131,6 +137,9 @@ namespace Bored_with_Web.Hubs
 			}
 		}
 
+		/// <summary>
+		/// The player that is being represented by the current caller connection.
+		/// </summary>
 		protected Player CurrentPlayer
 		{
 			get
@@ -142,6 +151,9 @@ namespace Bored_with_Web.Hubs
 			}
 		}
 
+		/// <summary>
+		/// The number being stored in the <see cref="Player.PlayerNumber"/> property of <see cref="CurrentPlayer"/>.
+		/// </summary>
 		protected int CurrentPlayerNumber { get { return CurrentPlayer.PlayerNumber; } }
 
 		public async override Task OnConnectedAsync()
@@ -253,6 +265,17 @@ namespace Bored_with_Web.Hubs
 			await base.OnDisconnectedAsync(exception);
 		}
 
+		/// <summary>
+		/// Notifies clients playing the game represented by the given <paramref name="gameId"/> that the specified <paramref name="player"/>
+		/// has lost connection and forfeited the game.
+		/// <br></br><br></br>
+		/// This method is presented as a way for calling clients from outside the hub without relying on external
+		/// classes to understand how the clients should be notified.
+		/// </summary>
+		/// <param name="context">The context providing access to the SignalR clients for the lobby group; this should be created through DI.</param>
+		/// <param name="gameId">The unique, human readable, identifier for the game that ended.</param>
+		/// <param name="player">The player who has lost connection and timed out.</param>
+		/// <param name="gameEnded">Whether or not the game has ended due to the <paramref name="player"/> being timed out.</param>
 		public static async void OnForfeitTimeout<THub, TGame, TClient>(IHubContext<THub, TClient> context, string gameId, Player player, bool gameEnded)
 			where THub : MultiplayerGameHub<TGame, TClient>
 			where TGame : GameType
