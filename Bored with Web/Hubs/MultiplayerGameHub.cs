@@ -235,7 +235,6 @@ namespace Bored_with_Web.Hubs
 							await Clients.Group(GameId).PlayerDisconnected(username, currentPlayerNumber, 0);
 							if (mustForfeit)
 							{
-								//TODO: Track that the player lost in their stats.
 								await Clients.Group(GameId).PlayerForfeited(username, currentPlayerNumber, false);
 							}
 

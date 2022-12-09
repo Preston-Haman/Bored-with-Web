@@ -43,6 +43,16 @@ namespace Bored_with_Web.Games
 		private readonly ConnectionGame board;
 
 		/// <summary>
+		/// The outcomes of each match, added as they end.
+		/// </summary>
+		private List<SimpleGameOutcome> matchOutcomes = new();
+
+		/// <summary>
+		/// The outcome of the current match.
+		/// </summary>
+		private SimpleGameOutcome currentMatchOutcome = null!;
+
+		/// <summary>
 		/// Creates a standard game of Connect Four with <see cref="STANDARD_CONNECT_FOUR_ROWS"/> rows,
 		/// <see cref="STANDARD_CONNECT_FOUR_COLUMNS"/> columns, and requiring the players to connect
 		/// <see cref="STANDARD_CONNECT_FOUR_SEQUENCE_LENGTH"/> tokens in a row to win.
@@ -52,6 +62,7 @@ namespace Bored_with_Web.Games
 		public ConnectFour()
 		{
 			board = new(STANDARD_CONNECT_FOUR_ROWS, STANDARD_CONNECT_FOUR_COLUMNS, STANDARD_CONNECT_FOUR_SEQUENCE_LENGTH);
+			BeginTrackingNewMatch();
 		}
 
 		/// <summary>
@@ -68,6 +79,7 @@ namespace Bored_with_Web.Games
 		{
 			board = new(STANDARD_CONNECT_FOUR_ROWS, STANDARD_CONNECT_FOUR_COLUMNS, STANDARD_CONNECT_FOUR_SEQUENCE_LENGTH);
 			base.CreateGame(CanonicalGames.GetGameInfoByRouteId("Connect-Four")!, gameId, player1, player2);
+			BeginTrackingNewMatch();
 		}
 
 		/// <summary>
@@ -92,6 +104,7 @@ namespace Bored_with_Web.Games
 
 			board = new(rows, columns, winningSequenceLength, (byte) players.Length);
 			base.CreateGame(CanonicalGames.GetGameInfoByRouteId("Connect-Four")!, gameId, players);
+			BeginTrackingNewMatch();
 		}
 
 		/// <summary>
@@ -106,7 +119,7 @@ namespace Bored_with_Web.Games
 		{
 			Player internalPlayer = GetInternalPlayer(player);
 
-			board.PlayGravityToken(handler, (BoardToken) internalPlayer.PlayerNumber, column);
+			board.PlayGravityToken(new ConnectionGameEventHandlerWrapper(this, handler), (BoardToken) internalPlayer.PlayerNumber, column);
 		}
 
 		/// <summary>
@@ -115,7 +128,7 @@ namespace Bored_with_Web.Games
 		/// <param name="handler">An object that handles updating the caller's representation of this game.</param>
 		public void RefreshBoard(IConnectionGameEventHandler handler)
 		{
-			board.RefreshBoard(handler);
+			board.RefreshBoard(new ConnectionGameEventHandlerWrapper(this, handler));
 		}
 
 		/// <summary>
@@ -129,7 +142,12 @@ namespace Bored_with_Web.Games
 		{
 			Player internalPlayer = GetInternalPlayer(player);
 
-			board.Forfeit(handler, (BoardToken) internalPlayer.PlayerNumber, clearBoard: false);
+			board.Forfeit(new ConnectionGameEventHandlerWrapper(this, handler), (BoardToken) internalPlayer.PlayerNumber, clearBoard: false);
+
+			//TODO: Consider doing the following... note that this is only called when someone intentionally clears the board -- they chose to quit that match.
+			//This must come after board.Forfeit
+			//currentMatchOutcome.EndState = GameEnding.INCOMPLETE;
+			//currentMatchOutcome.ForfeitingPlayers.Add(internalPlayer);
 		}
 
 		/// <summary>
@@ -144,7 +162,7 @@ namespace Bored_with_Web.Games
 		{
 			Player internalPlayer = GetInternalPlayer(hasNextTurn);
 
-			board.ClearBoard(handler, (BoardToken) internalPlayer.PlayerNumber);
+			board.ClearBoard(new ConnectionGameEventHandlerWrapper(this, handler), (BoardToken) internalPlayer.PlayerNumber);
 		}
 
 		/// <summary>
@@ -157,6 +175,134 @@ namespace Bored_with_Web.Games
 		public override bool PlayerCannotLeaveWithoutForfeiting()
 		{
 			return board.IsActive;
+		}
+
+		public override bool PlayerLeft(Player player, bool isConnectionTimeout = false)
+		{
+			if (base.PlayerLeft(player, isConnectionTimeout))
+			{
+				if (PlayerCannotLeaveWithoutForfeiting())
+				{
+					currentMatchOutcome.EndState = GameEnding.INCOMPLETE;
+					currentMatchOutcome.ForfeitingPlayers.Add(player);
+				}
+				else
+				{
+					currentMatchOutcome.EndState = GameEnding.NONE;
+				}
+
+				return true;
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Adds the <see cref="currentMatchOutcome"/> to <see cref="matchOutcomes"/>, and then resets
+		/// <see cref="currentMatchOutcome"/> to one that is considered to be not started.
+		/// </summary>
+		private void BeginTrackingNewMatch()
+		{
+			if (currentMatchOutcome is not null)
+			{
+				matchOutcomes.Add(currentMatchOutcome);
+			}
+
+			currentMatchOutcome = new()
+			{
+				EndState = GameEnding.NONE,
+				Game = this
+			};
+		}
+
+		protected override IEnumerable<SimpleGameOutcome> GetOutcome()
+		{
+			//Add the last match to the list before returning it.
+			BeginTrackingNewMatch();
+			return matchOutcomes;
+		}
+
+		/// <summary>
+		/// A helper class that allows for intercepting changes to the game state before passing them back to the caller.
+		/// </summary>
+		private class ConnectionGameEventHandlerWrapper : IConnectionGameEventHandler
+		{
+			/// <summary>
+			/// The instance of <see cref="ConnectFour"/> this nested class was created by.
+			/// </summary>
+			private ConnectFour parent;
+
+			/// <summary>
+			/// The real <see cref="IConnectionGameEventHandler"/> that is being wrapped by this class.
+			/// </summary>
+			private readonly IConnectionGameEventHandler wrapped;
+
+			public ConnectionGameEventHandlerWrapper(ConnectFour parent, IConnectionGameEventHandler wrapped)
+			{
+				this.parent = parent;
+				this.wrapped = wrapped;
+			}
+
+			void IConnectionGameEventHandler.ClearBoard(BoardToken newActivePlayer)
+			{
+				parent.BeginTrackingNewMatch();
+				parent.currentMatchOutcome.EndState = GameEnding.INCOMPLETE;
+
+				wrapped.ClearBoard(newActivePlayer);
+			}
+
+			void IConnectionGameEventHandler.GameEnded(BoardToken winningPlayerToken)
+			{
+				parent.currentMatchOutcome.EndState = winningPlayerToken > 0 ? GameEnding.VICTORY : GameEnding.STALEMATE;
+				if (winningPlayerToken > 0)
+				{
+					parent.currentMatchOutcome.WinningPlayers.Add((from players in parent.Players
+																   where players.PlayerNumber == (int) winningPlayerToken
+																   select players).Single());
+
+					parent.currentMatchOutcome.LosingPlayers.UnionWith((from players in parent.Players
+																		where players.PlayerNumber != (int) winningPlayerToken
+																		select players).ToList());
+				}
+				else
+				{
+					parent.currentMatchOutcome.LosingPlayers.UnionWith(parent.Players);
+				}
+				wrapped.GameEnded(winningPlayerToken);
+			}
+
+			void IConnectionGameEventHandler.RefreshBoard(BoardToken[] validBoard)
+			{
+				wrapped.RefreshBoard(validBoard);
+			}
+
+			bool IConnectionGameEventHandler.ShouldRefreshBoardOnInvalidPlay(BoardToken attemptedPlayToken, BoardToken existingTokenInSlot, bool isActivePlayer, byte row, byte column)
+			{
+				return wrapped.ShouldRefreshBoardOnInvalidPlay(attemptedPlayToken, existingTokenInSlot, isActivePlayer, row, column);
+			}
+
+			void IConnectionGameEventHandler.TokenPlayed(BoardToken playedToken, BoardToken nextPlayerToken, byte row, byte column)
+			{
+				if (parent.currentMatchOutcome.EndState == GameEnding.NONE)
+				{
+					parent.currentMatchOutcome.EndState = GameEnding.INCOMPLETE;
+				}
+
+				Player player = (from players in parent.Players
+								 where players.PlayerNumber == (int) playedToken
+								 select players).Single();
+
+				if (parent.currentMatchOutcome.PlayerTurnCounts.TryGetValue(player, out int turnCount))
+				{
+					parent.currentMatchOutcome.PlayerTurnCounts[player] = turnCount + 1;
+				}
+				else
+				{
+					parent.currentMatchOutcome.PlayerTurnCounts.Add(player, 1);
+				}
+
+				wrapped.TokenPlayed(playedToken, nextPlayerToken, row, column);
+			}
 		}
 	}
 }

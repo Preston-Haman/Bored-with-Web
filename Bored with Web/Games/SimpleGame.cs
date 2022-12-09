@@ -72,7 +72,7 @@
 		/// <br></br><br></br>
 		/// Subscribers may register directly, and will be notified of this game ending.
 		/// </summary>
-		public event EventHandler<SimpleGame>? OnGameEnded;
+		public event EventHandler<IEnumerable<SimpleGameOutcome>>? OnGameEnded;
 
 		/// <summary>
 		/// Whether this game has started or not. This is defined by all the players
@@ -181,12 +181,17 @@
 		/// <returns>True if the game ends because this player left; false otherwise.</returns>
 		public virtual bool PlayerLeft(Player player, bool isConnectionTimeout = false)
 		{
-			Players.Remove(player);
-			if (Players.Count < Info.RequiredPlayerCount)
+			Player internalPlayer = GetInternalPlayer(player);
+			internalPlayer.Left = true;
+
+			if (Info.RequiredPlayerCount > (from players in Players
+											where !players.Left
+											select players).Count())
 			{
 				EndGame();
 				return true;
 			}
+
 			return false;
 		}
 
@@ -195,9 +200,9 @@
 		/// </summary>
 		public virtual void EndGame()
 		{
-			if (OnGameEnded is EventHandler<SimpleGame> handler)
+			if (OnGameEnded is EventHandler<IEnumerable<SimpleGameOutcome>> handler)
 			{
-				handler(this, this);
+				handler(this, GetOutcome());
 			}
 		}
 
@@ -218,5 +223,16 @@
 
 			return internalPlayer;
 		}
+
+		/// <summary>
+		/// Returns the outcome of this game's competition. Games that allow matches may return multiple
+		/// outcomes, one for each match. This method is only called when the game ends, with the returned value
+		/// being published out to subscribers of <see cref="OnGameEnded"/>.
+		/// <br></br><br></br>
+		/// The outcome of a game includes the ending state of the game, the number of turns taken (if applicable),
+		/// and the list of players that won, lost, or forfeited. See <see cref="SimpleGameOutcome"/> for more information.
+		/// </summary>
+		/// <returns>The outcome, or list of outcomes, of this game.</returns>
+		protected abstract IEnumerable<SimpleGameOutcome> GetOutcome();
 	}
 }
