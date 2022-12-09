@@ -33,6 +33,13 @@
 		public bool Ready { get; set; } = false;
 
 		/// <summary>
+		/// Whether this player has left the game after joining or not.
+		/// <br></br><br></br>
+		/// Players that leave forfeit the game.
+		/// </summary>
+		public bool Left { get; set; } = false;
+
+		/// <summary>
 		/// Creates a Player instance with the given <paramref name="username"/> assigned to <see cref="Username"/>.
 		/// </summary>
 		/// <param name="username">The unique name of the player.</param>

@@ -78,7 +78,6 @@ namespace Bored_with_Web.Hubs
 		/// </summary>
 		public async Task ForfeitMatch()
 		{
-			//TODO: Add loss to stats
 			ActiveGame.Forfeit(this, CurrentPlayer);
 			await Clients.Caller.BoardCleared();
 			await Clients.OthersInGroup(GameId).Rematch();

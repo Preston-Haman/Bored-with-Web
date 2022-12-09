@@ -1,5 +1,7 @@
-﻿using Bored_with_Web.Hubs;
+﻿using Bored_with_Web.Data;
+using Bored_with_Web.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
 namespace Bored_with_Web.Games
@@ -301,12 +303,26 @@ namespace Bored_with_Web.Games
 			}
 			games.Add(game.GameId);
 
-			game.OnGameEnded += (object? sender, SimpleGame endedGame) => {
+			game.OnGameEnded += (object? sender, IEnumerable<SimpleGameOutcome> gameOutcomes) => {
+				//sender is the SimpleGame that is ending.
+				if (sender is not SimpleGame endedGame)
+				{
+					throw new ArgumentException($"Publishers of game ending events should be the concrete implementation {nameof(SimpleGame)} that handles the game.", nameof(sender));
+				}
+
 				SIMPLE_GAMES_BY_ID.Remove(endedGame.GameId);
 
 				if (SIMPLE_GAME_IDS_BY_LOBBY_GROUP.TryGetValue(lobbyGroup, out HashSet<string>? games))
 				{
 					games.Remove(endedGame.GameId);
+				}
+
+				//Update game stats based on the outcome of the game.
+				foreach (SimpleGameOutcome outcome in gameOutcomes)
+				{
+					UseDbContextFor(async dbContext => {
+						await outcome.StoreGameStats(dbContext);
+					});
 				}
 
 				//Send message to lobby clients that the game ended.
@@ -412,6 +428,23 @@ namespace Bored_with_Web.Games
 		{
 			context = services.GetRequiredService(typeof(IHubContext<THub, TClient>)) as IHubContext<THub, TClient>;
 			return context is not null;
+		}
+
+		/// <summary>
+		/// A helper method to retrieve a database context from <see cref="DIServices"/>, and run code using it.
+		/// <br></br><br></br>
+		/// The context is not managed by the DI container; instead, it is disposed after being used by this method.
+		/// </summary>
+		/// <param name="action">The code to run using the database context.</param>
+		private static async void UseDbContextFor(Func<ApplicationDbContext, Task> action)
+		{
+			if (DIServices.GetRequiredService(typeof(IDbContextFactory<ApplicationDbContext>)) is not IDbContextFactory<ApplicationDbContext> contextFactory)
+			{
+				throw new InvalidOperationException("Unable to create a database context -- the DI service is unavailable.");
+			}
+
+			await using ApplicationDbContext dbContext = await contextFactory.CreateDbContextAsync();
+			await action(dbContext);
 		}
 	}
 }

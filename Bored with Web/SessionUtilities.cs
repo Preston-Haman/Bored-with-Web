@@ -1,4 +1,6 @@
-﻿namespace Bored_with_Web
+﻿using Bored_with_Web.Data;
+
+namespace Bored_with_Web
 {
 	/// <summary>
 	/// An extension class that helps with session storage.
@@ -29,6 +31,19 @@
         {
 			session.SetString(USERNAME, username);
         }
+
+		/// <summary>
+		/// Guest users have their stats, if any, transferred to their registered accounts.
+		/// The session username for the user is also set to match their registered username.
+		/// </summary>
+		/// <param name="session">This session.</param>
+		/// <param name="registeredUsername">The username associated with the account of the user.</param>
+		/// <param name="dbContext">The database context for the site.</param>
+		public static async Task LoginAs(this ISession session, string registeredUsername, ApplicationDbContext dbContext)
+		{
+			await GuestCache.OnGuestLogin(session.GetUsername()!, registeredUsername, dbContext);
+			session.SetUsername(registeredUsername);
+		}
 	}
 
 	/// <summary>

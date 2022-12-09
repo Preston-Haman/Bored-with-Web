@@ -20,8 +20,7 @@ else
 	if (httpContext.HttpContext?.Session.GetUsername() is string username)
 	{
 		<li class="nav-item">
-			@* TODO: Allow the guest user to view their statistics *@
-			<a class="nav-link text-dark" href="#" @* asp-area="Identity" asp-page="#" *@>Hello @username!</a>
+			<a class="nav-link text-dark" asp-controller="Stats" asp-action="Guest">Hello @username!</a>
 		</li>
 	}
 	<li class="nav-item">
