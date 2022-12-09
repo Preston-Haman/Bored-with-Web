@@ -1,0 +1,100 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@model IEnumerable<Bored_with_Web.Models.GameStatistic>
+
+@{
+    bool userIsGuest = !SignInManager.IsSignedIn(User);
+}
+
+@if (Model is not null && Model.Count() > 0)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>
+                    @Html.DisplayNameFor(model => model.GameRouteId)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.PlayCount)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.Wins)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.Losses)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.Stalemates)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.Forfeitures)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.IncompleteCount)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.MovesPlayed)
+                </th>
+                @if (!userIsGuest)
+                {
+                    <th></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model) {
+                <tr>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.GameRouteId)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.PlayCount)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Wins)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Losses)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Stalemates)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Forfeitures)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.IncompleteCount)
+                    </td>
+                    <td>
+                        @if (item.MovesPlayed > 0)
+                        {
+                            @Html.DisplayFor(modelItem => item.MovesPlayed)
+                        }
+                    </td>
+                    @if (!userIsGuest)
+                    {
+                        <td>
+                            <a class="btn btn-danger" asp-controller="Stats" asp-action="Delete" asp-route-id="@item.GameRouteId" asp-route-returnUrl="@Url.Page("./Index")">Delete</a>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (!userIsGuest)
+    {
+        <a id="delete-statistics-button" class="btn btn-danger" asp-controller="Stats" asp-action="DeleteAll" asp-route-returnUrl="@Url.Page("./Index")">Delete All Gameplay Statistics</a>
+    }
+    else
+    {
+        <p>
+            These stats are temporary, as you are not logged in.
+        </p>
+    }
+}
+else
+{
+    <p>
+        Gameplay statistics for you are not currently available; go play some more games!
+    </p>
+}

@@ -6,9 +6,12 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
+using Bored_with_Web.Data;
+using Bored_with_Web.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bored_with_Web.Areas.Identity.Pages.Account.Manage
 {
@@ -16,13 +19,16 @@ namespace Bored_with_Web.Areas.Identity.Pages.Account.Manage
     {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
         public IndexModel(
             UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager)
+            SignInManager<IdentityUser> signInManager,
+            IDbContextFactory<ApplicationDbContext> dbContextFactory)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _dbContextFactory = dbContextFactory;
         }
 
         /// <summary>
@@ -30,6 +36,8 @@ namespace Bored_with_Web.Areas.Identity.Pages.Account.Manage
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public string Username { get; set; }
+
+        public IEnumerable<GameStatistic> GameStats { get; set; }
 
         /// <summary>
         ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
@@ -65,7 +73,14 @@ namespace Bored_with_Web.Areas.Identity.Pages.Account.Manage
             var userName = await _userManager.GetUserNameAsync(user);
             var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
 
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            var gameStats = await (from stats in dbContext.GameStatistics
+                                   where stats.Username == userName
+                                   select stats).ToListAsync();
+
             Username = userName;
+
+            GameStats = gameStats;
 
             Input = new InputModel
             {

@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
+using Bored_with_Web.Data;
 
 namespace Bored_with_Web.Areas.Identity.Pages.Account
 {
@@ -21,11 +23,13 @@ namespace Bored_with_Web.Areas.Identity.Pages.Account
     {
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
+        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
-        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger)
+        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger, IDbContextFactory<ApplicationDbContext> dbContextFactory)
         {
             _signInManager = signInManager;
             _logger = logger;
+            _dbContextFactory = dbContextFactory;
         }
 
         /// <summary>
@@ -114,7 +118,8 @@ namespace Bored_with_Web.Areas.Identity.Pages.Account
                 var result = await _signInManager.PasswordSignInAsync(Input.Username, Input.Password, Input.RememberMe, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {
-                    HttpContext.Session.SetUsername(Input.Username);
+                    await using ApplicationDbContext dbContext = await _dbContextFactory.CreateDbContextAsync();
+                    await HttpContext.Session.LoginAs(Input.Username, dbContext);
                     _logger.LogInformation("User logged in.");
                     return LocalRedirect(returnUrl);
                 }
