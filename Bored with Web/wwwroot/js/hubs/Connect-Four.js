@@ -180,10 +180,12 @@ function getOpponentName() {
  * 		[3][4][5]
  * 		[0][1][2]
  * 
- * @param {Number[]} board - A representation of the game board.
+ * @param {String} board - A binary representation of the game board that's been converted into a Base64 String.
  */
 function joined(board) {
 	clearAllSlots();
+
+	board = Uint8Array.from(window.atob(board), b => b.charCodeAt(0));
 
 	for (let y = 0; y < CONNECT_FOUR_ROWS; y++) {
 		let offset = CONNECT_FOUR_COLUMNS * y;
