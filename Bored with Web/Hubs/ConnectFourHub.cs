@@ -120,13 +120,14 @@ namespace Bored_with_Web.Hubs
 
 		async void IConnectionGameEventHandler.RefreshBoard(BoardToken[] validBoard)
 		{
+			await Clients.Caller.SetPlayerTurn(ActiveGame.ActivePlayerNumber);
 			await Clients.Caller.Joined(Array.ConvertAll(validBoard, token => (byte) token));
 		}
 
 		bool IConnectionGameEventHandler.ShouldRefreshBoardOnInvalidPlay(BoardToken attemptedPlayToken, BoardToken existingTokenInSlot, bool isActivePlayer, byte row, byte column)
 		{
-			//The client shouldn't be allowing this input if they aren't the active player.
-			return !isActivePlayer;
+			//For now, we'll always return true; in the future, we could decide based on the method parameters.
+			return true;
 		}
 
 		async void IConnectionGameEventHandler.TokenPlayed(BoardToken playedToken, BoardToken nextPlayerToken, byte row, byte column)
