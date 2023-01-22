@@ -14,10 +14,13 @@
 	}
 	<link rel="stylesheet" href="~/css/@style">
 	<partial name="@head"></partial>
+	<partial name="_Joke-API-Head" />
 }
 
 @{ string gameplay = $"_{Model.Info.RouteId}.cshtml"; }
 <partial name="@gameplay" />
+<br>
+<partial name="_Joke-API" />
 
 @section Scripts
 {
