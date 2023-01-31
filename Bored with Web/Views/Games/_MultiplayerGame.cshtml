@@ -19,6 +19,7 @@
 *@
 
 @using Bored_with_Web.Hubs
+@using Bored_with_Web.Games
 
 <script>
 	@* Client events *@
@@ -31,6 +32,13 @@
 	const CE_MULTIPLAYER_GAME_UPDATE_VISIBlE_PLAYERS = "@nameof(IMultiplayerGameClient.UpdateVisiblePlayers)";
 	const CE_MULTIPLAYER_GAME_START_GAME = "@nameof(IMultiplayerGameClient.StartGame)";
 	const CE_MULTIPLAYER_GAME_SET_PLAYER_TURN = "@nameof(IMultiplayerGameClient.SetPlayerTurn)";
+	const CE_MULTIPLAYER_GAME_PLAYER_FORFEITED_MATCH = "@nameof(IMultiplayerGameClient.PlayerForfeitedMatch)";
+	const CE_MULTIPLAYER_GAME_MATCH_ENDED = "@nameof(IMultiplayerGameClient.MatchEnded)";
+	const CE_MULTIPLAYER_GAME_REMATCH = "@nameof(IMultiplayerGameClient.Rematch)";
+	const CE_MULTIPLAYER_GAME_RESET_GAME = "@nameof(IMultiplayerGameClient.ResetGame)";
 	const CE_MULTIPLAYER_GAME_END_GAME = "@nameof(IMultiplayerGameClient.EndGame)";
+
+	@* Server events *@
+	const SE_MULTIPLAYER_GAME_FORFEIT_AND_REMATCH = "@nameof(MultiplayerGameHub<SimpleGame, IMultiplayerGameClient>.ForfeitAndRematch)";
 </script>
 <script src="~/js/hubs/multiplayer-game.js"></script>

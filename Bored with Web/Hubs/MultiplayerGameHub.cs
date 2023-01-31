@@ -40,7 +40,7 @@ namespace Bored_with_Web.Hubs
 		/// having lost connection; in such a case, <paramref name="isConnectionTimeout"/> will be true.
 		/// Implementations may let the user know that the specified player is no longer competing.
 		/// </summary>
-		/// <param name="playerName">The name of the connecting player.</param>
+		/// <param name="playerName">The name of the forfeiting player.</param>
 		/// <param name="playerNumber">The numeric identifier of the player; this is unique to this game only.</param>
 		/// <param name="isConnectionTimeout">If the forfeit was caused by a disconnection or not.</param>
 		Task PlayerForfeited(string playerName, int playerNumber, bool isConnectionTimeout);
@@ -83,6 +83,32 @@ namespace Bored_with_Web.Hubs
 		/// </summary>
 		/// <param name="playerNumber">The numeric identifier of the player; this is unique to this game only.</param>
 		Task SetPlayerTurn(int playerNumber);
+
+		/// <summary>
+		/// Called when a game supporting matches had one of its players forfeit the match. Implementors may use the
+		/// provided information to inform the other players of this event.
+		/// </summary>
+		/// <param name="playerName">The name of the forfeiting player.</param>
+		/// <param name="playerNumber">The numeric identifier of the player; this is unique to this game only.</param>
+		Task PlayerForfeitedMatch(string playerName, int playerNumber);
+
+		/// <summary>
+		/// Called when the match has ended; if the match ended in a draw, then <paramref name="winningPlayerNumber"/>
+		/// will be zero.
+		/// </summary>
+		/// <param name="winningPlayerNumber">The player number representing the winning player; or zero, if there was no winner.</param>
+		Task MatchEnded(int winningPlayerNumber);
+
+		/// <summary>
+		/// Called when the opponent wants to challenge the player to another match. Implementations should
+		/// inform the user that this challenge was issued.
+		/// </summary>
+		Task Rematch();
+
+		/// <summary>
+		/// Called when a match has concluded. Implementations should reset the state of the game to the starting conditions.
+		/// </summary>
+		Task ResetGame();
 
 		/// <summary>
 		/// Called when the game has fully ended. The connection should be closed. Implementors may allow the user
@@ -202,6 +228,69 @@ namespace Bored_with_Web.Hubs
 		/// </summary>
 		protected abstract Task OnJoinedGame();
 
+		/// <summary>
+		/// Called when a user attempts to issue or accept a rematch, or declare their own forfeiture of the current match.
+		/// <br></br><br></br>
+		/// The default implementation found in <see cref="MultiplayerGameHub{,}"/> only fully handles the trivial
+		/// case of two player games. Subclasses are responsible for overriding this method when their game
+		/// implementations support multiple matches with more than two players.
+		/// </summary>
+		public virtual async Task ForfeitAndRematch()
+		{
+			//If the match is active, forfeit the caller.
+			if (ActiveGame.MatchIsActive)
+			{
+				//If the match becomes inactive from this call, a rematch notification will go out.
+				await ActiveGame.ForfeitMatch(this, CurrentPlayer);
+			}
+			else
+			{
+				if (ActiveGame.RematchWasIssued)
+				{
+					//The match isn't active, and a rematch notification went out already.
+					await ActiveGame.AcceptRematchOrLeave(this, CurrentPlayer);
+				}
+				else
+				{
+					//The match ended (probably naturally), and the caller is the first player trying to issue a rematch.
+					ActiveGame.RematchWasIssued = true;
+					await IssueRematchNotification();
+					await ActiveGame.AcceptRematchOrLeave(this, CurrentPlayer);
+				}
+			}
+		}
+
+		public virtual async Task NotifyOthersOfCallerMatchForfeiture()
+		{
+			await Clients.OthersInGroup(GameId).PlayerForfeitedMatch(CurrentPlayer.Username, CurrentPlayerNumber);
+		}
+
+		public virtual async Task IssueRematchNotification(bool includeCaller = false)
+		{
+			if (!ActiveGame.MatchIsActive)
+			{
+				if (includeCaller)
+				{
+					await Clients.Group(GameId).Rematch();
+				}
+				else
+				{
+					await Clients.OthersInGroup(GameId).Rematch();
+				}
+			}
+		}
+
+		public virtual async Task ResetCallerGame()
+		{
+			await Clients.Caller.ResetGame();
+		}
+
+		public virtual async Task EndGameSession()
+		{
+			await Clients.Group(GameId).EndGame();
+			ActiveGame.EndGame();
+		}
+
 		public async override Task OnDisconnectedAsync(Exception? exception)
 		{
 			const int TimeoutSeconds = 60;
@@ -227,20 +316,24 @@ namespace Bored_with_Web.Hubs
 						if (exception is null)
 						{
 							//Player left on purpose?
-							//Cache the game and player number because it might be removed from GameService if PlayerLeft returns true.
-							SimpleGame activeGame = ActiveGame;
-							int currentPlayerNumber = CurrentPlayerNumber;
-							bool gameEnded = ActiveGame.PlayerLeft(CurrentPlayer);
+							gameShouldEnd = ActiveGame.PlayerLeft(CurrentPlayer);
 
-							await Clients.Group(GameId).PlayerDisconnected(username, currentPlayerNumber, 0);
+							await Clients.Group(GameId).PlayerDisconnected(username, CurrentPlayerNumber, 0);
+							
 							if (mustForfeit)
 							{
-								await Clients.Group(GameId).PlayerForfeited(username, currentPlayerNumber, false);
+								await Clients.Group(GameId).PlayerForfeited(username, CurrentPlayerNumber, false);
 							}
 
-							if (gameEnded)
+							if (ActiveGame.RematchWasIssued && !gameShouldEnd)
+							{
+								await ActiveGame.AcceptRematchOrLeave(this, CurrentPlayer);
+							}
+
+							if (gameShouldEnd)
 							{
 								await Clients.Group(GameId).EndGame();
+								ActiveGame.EndGame();
 							}
 						}
 						else
