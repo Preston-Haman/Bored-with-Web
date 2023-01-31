@@ -31,26 +31,13 @@
 		}
 	}
 
-	//TODO: Integrate into SimpleGame; I see no reason for this interface to exist separately.
-	public interface ISimpleGameCreation
-	{
-		/// <summary>
-		/// Initializes a game by applying the given <paramref name="gameId"/> and <paramref name="players"/>
-		/// to the internal state.
-		/// </summary>
-		/// <param name="info">The <see cref="GameInfo"/> associated with the game being created.</param>
-		/// <param name="gameId">A string representing this instance of a game.</param>
-		/// <param name="players">The players that will be competing in this game.</param>
-		public void CreateGame(GameInfo info, string gameId, params Player[] players);
-	}
-
 	/// <summary>
 	/// Represents a game where the internal state is simple in nature. Examples might include Connect Four, Checkers, and Chess.
 	/// <br></br><br></br>
 	/// Subclasses must offer a parameterless constructor. This class hierarchy is generally meant to be instantiated through
 	/// reflection; once the class instance has been created, a call to <see cref="CreateGame(GameInfo, string, Player[])"/> should be made.
 	/// </summary>
-	public abstract class SimpleGame : ISimpleGameCreation
+	public abstract class SimpleGame
 	{
 		/// <summary>
 		/// Information about the game represented.
@@ -80,6 +67,13 @@
 		/// </summary>
 		public bool Started { get; private set; } = false;
 
+		/// <summary>
+		/// Initializes a game by applying the given <paramref name="gameId"/> and <paramref name="players"/>
+		/// to the internal state.
+		/// </summary>
+		/// <param name="info">The <see cref="GameInfo"/> associated with the game being created.</param>
+		/// <param name="gameId">A string representing this instance of a game.</param>
+		/// <param name="players">The players that will be competing in this game.</param>
 		public void CreateGame(GameInfo info, string gameId, params Player[] players)
 		{
 			if (Attribute.GetCustomAttribute(this.GetType(), typeof(GameAttribute)) is not GameAttribute game)
