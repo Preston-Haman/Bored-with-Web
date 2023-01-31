@@ -1,6 +1,20 @@
 ﻿
+/**
+ * The SignalR connection being used for the game; this is provided by specific game implementations
+ * by calling useDefaultMultiplayerGameConnectionEvents.
+ */
 let defaultMultiplayerGameConnection;
 
+/**
+ * A function provided by specific game implementations when calling useDefaultMultiplayerGameConnectionEvents
+ * that lets that implementation reset the state of the board without worrying about the source connection event
+ * triggering the action.
+ */
+let gameResetCallbackFunction;
+
+/**
+ * Whether or not it's currently the user's turn.
+ */
 var isUserTurn = false;
 
 /**
@@ -9,16 +23,33 @@ var isUserTurn = false;
 var ourPlayerNumber = 0;
 
 /**
+ * If the user has issued a rematch to their opponent or not.
+ */
+let userIssuedRematch = false;
+
+/**
+ * If the opponent has issued a rematch to the user or not.
+ */
+let opponentIssuedRematch = false;
+
+/**
  * Associates default implementations for IMultiplayerGameClient with the given connection.
  * 
  * Use of the default implementations implies that certain conditions are met for the given webpage.
  * All of these conditions are optional; and will fail silently.
  * 
  * @param {HubConnection} connection - The connection to apply the default implementations to.
+ * @param {Function} gameResetCallback - A callback function, accepting no parameters and returning void,
+ * that resets the state of the game to the starting conditions.
+ * @param {Function} userCanForfeitOrReMatch - A function, accepting no parameters and returning a boolean.
+ * If false is returned, inputs made to the button with id "game-forfeit-and-rematch" will be ignored;
+ * however, if true is returned, the corresponding Server Event will be triggered by the input.
  */
-function useDefaultMultiplayerGameConnectionEvents(connection) {
+function useDefaultMultiplayerGameConnectionEvents(connection, gameResetCallback, userCanForfeitOrReMatch) {
 	defaultMultiplayerGameConnection = connection;
+	gameResetCallbackFunction = gameResetCallback;
 
+	//Client Events -- Things that are triggered by the server, but run on the client.
 	connection.on(CE_MULTIPLAYER_GAME_SET_USER_PLAYER_NUMBER, setUserPlayerNumber);
 	connection.on(CE_MULTIPLAYER_GAME_PLAYER_CONNECTED, playerConnected);
 	connection.on(CE_MULTIPLAYER_GAME_PLAYER_DISCONNECTED, playerDisconnected);
@@ -28,7 +59,56 @@ function useDefaultMultiplayerGameConnectionEvents(connection) {
 	connection.on(CE_MULTIPLAYER_GAME_UPDATE_VISIBlE_PLAYERS, updateVisiblePlayers);
 	connection.on(CE_MULTIPLAYER_GAME_START_GAME, startGame);
 	connection.on(CE_MULTIPLAYER_GAME_SET_PLAYER_TURN, setPlayerTurn);
+	connection.on(CE_MULTIPLAYER_GAME_MATCH_ENDED, matchEnded);
+	connection.on(CE_MULTIPLAYER_GAME_REMATCH, rematch);
+	connection.on(CE_MULTIPLAYER_GAME_RESET_GAME, resetGame);
 	connection.on(CE_MULTIPLAYER_GAME_END_GAME, endGame);
+
+	//Server Events -- Things the user triggers to run on the server.
+	//SE_MULTIPLAYER_GAME_FORFEIT_AND_REMATCH
+	let forfeitAndRematchButton = document.getElementById("game-forfeit-and-rematch");
+	if (forfeitAndRematchButton) {
+		forfeitAndRematchButton.onclick = function () {
+			//There are three things that can happen here...
+			//The user can forfeit the match and simultaneously issue a rematch.
+			//The user can attempt to rematch their opponent for a match that's already over.
+			//The user can accept a rematch from their opponent.
+			//Regardless of what's going on, we're only triggering the rematch Server Event.
+			if (userCanForfeitOrReMatch()) {
+				forfeitAndRematchButton.disabled = true;
+				if (!opponentIssuedRematch) {
+					userIssuedRematch = true;
+				}
+
+				defaultMultiplayerGameConnection.invoke(SE_MULTIPLAYER_GAME_FORFEIT_AND_REMATCH).then(function () {
+					if (!opponentIssuedRematch) {
+						//If the opponent already issued a rematch, then we are just accepting it and don't need a message.
+						//Otherwise, we are issuing a rematch to the opponent; and, if the match is active, forfeiting it.
+						createAndSendMessage("You've requested a rematch! Please wait for the other player(s).");
+					}
+					forfeitAndRematchButton.disabled = false;
+				}).catch(function (err) {
+					userIssuedRematch = false;
+					forfeitAndRematchButton.disabled = false;
+					return console.error(err.toString());
+				});
+			}
+		};
+	}
+}
+
+/**
+ * Sets the disabled value of all game-input elements to true.
+ * 
+ * This is meant to be called under the following conditions:
+ * 	The existence of elements containing the class "game-input" supporting the disabled attribute.
+ * 
+ * @param {Boolean} enabled - Whether or not the input should be enabled; the default value is true.
+ */
+function defaultEnableGameInput(enabled = true) {
+	document.querySelectorAll("game-input").forEach(function (input) {
+		input.disabled = !enabled;
+	});
 }
 
 /**
@@ -106,7 +186,7 @@ function playerForfeited(playerName, playerNumber, isConnectionTimeout) {
 	if (isConnectionTimeout) {
 		createAndSendMessage(`${playerName}'s connection has timed out; they have now automatically forfeited the game.`, "danger");
 	} else {
-		createAndSendMessage(`${playerName} has forfeited the game.`, "danger");
+		createAndSendMessage(`${playerName} has forfeited the game and left.`, "danger");
 	}
 
 	document.getElementById(`player-${playerNumber}`).innerText = `${playerName} {Quit}`;
@@ -215,11 +295,7 @@ function updateVisiblePlayers(players, playerNumbers, spectators) {
  * 	The existence of elements containing the class "game-input" supporting the disabled attribute.
  */
 function startGame() {
-	document.querySelectorAll("game-input").forEach(function (input) {
-		if (input.disabled) {
-			input.disabled = false;
-		}
-	});
+	defaultEnableGameInput();
 }
 
 /**
@@ -256,17 +332,95 @@ function setPlayerTurn(playerNumber) {
 }
 
 /**
+ * Informs the user that the specified player has forfeited the match.
+ * 
+ * This is meant to handle the following event, under the following conditions:
+ * CE_MULTIPLAYER_GAME_PLAYER_FORFEITED_MATCH:
+ * 	The existence of an element with the id of "messages" that can have bootstrap alerts appended to it.
+ * 
+ * @param {String} playerName - The name of the forfeiting player.
+ * @param {Number} playerNumber - The number representing the player that forfeited the match.
+ */
+function playerForfeitedMatch(playerName, playerNumber) {
+	createAndSendMessage(`${playerName} has forfeited the current match.`, "danger");
+	document.getElementById(`player-${playerNumber}`).innerText = `${playerName} {Forfeit}`;
+}
+
+/**
+ * Informs the user that the match has ended and how. This method also sets the disabled value of all game-input elements to true.
+ * 
+ * This is meant to handle the following event, under the following conditions:
+ * CE_MULTIPLAYER_GAME_MATCH_ENDED:
+ * 	The existence of elements containing the class "game-input" supporting the disabled attribute.
+ * 	The specific game implementation only supporting a single winning player.
+ * 
+ * @param {Number} winningPlayerNumber - The player number representing the winning player; or zero, if there was no winner.
+ */
+function matchEnded(winningPlayerNumber) {
+	defaultEnableGameInput(false);
+
+	//TODO: Consider changing this text based on how the match ends.
+	let title = "The Match is Over!";
+	let modal;
+	if (winningPlayerNumber) {
+		let winningPlayer = document.getElementById(`player-${winningPlayerNumber}`).innerText;
+		modal = createModal(title, `${winningPlayer} wins!`);
+	} else {
+		modal = createModal(title, "The match has ended in a stalemate!");
+	}
+	const bsModal = new bootstrap.Modal(modal);
+
+	modal.addEventListener("hidden.bs.modal", function () {
+		bsModal.dispose();
+		modal.remove();
+	});
+
+	document.getElementsByTagName("body")[0].appendChild(modal);
+	bsModal.show();
+}
+
+/**
+ * Displays a message to the user that their opponent has challenged them to a rematch.
+ * Alternatively, if this user issued a rematch challenge already, then the message
+ * is altered to claim the other player accepted the rematch.
+ * 
+ * This is meant to handle the following event, under the following conditions:
+ * CE_MULTIPLAYER_GAME_REMATCH:
+ * 	The existence of an element with the id of "messages" that can have bootstrap alerts appended to it.
+ * 	The specific game implementation only supporting two players.
+ */
+function rematch() {
+	if (userIssuedRematch) {
+		createAndSendMessage("Your opponent accepted your rematch.");
+	} else {
+		opponentIssuedRematch = true;
+		createAndSendMessage("You were challenged to a rematch! Clear the board when you are ready.");
+	}
+}
+
+/**
+ * Sets userIssuedRematch and opponentIssuedRematch to false, then calls gameResetCallbackFunction.
+ * 
+ * This is meant to handle the following event, under the following conditions:
+ * CE_MULTIPLAYER_GAME_RESET_GAME:
+ * 	The existence of gameResetCallbackFunction, specified via useDefaultMultiplayerGameConnectionEvents.
+ */
+function resetGame() {
+	userIssuedRematch = false;
+	opponentIssuedRematch = false;
+	gameResetCallbackFunction();
+}
+
+/**
  * Sets the disabled value of all game-input elements to true, and informs the user to leave the page.
  * 
  * This is meant to handle the following event, under the following conditions:
  * CE_MULTIPLAYER_GAME_END_GAME:
  * 	The existence of elements containing the class "game-input" supporting the disabled attribute.
+ * 	The existence of an element with the id of "messages" that can have bootstrap alerts appended to it.
  */
 function endGame() {
-	document.querySelectorAll("game-input").forEach(function (input) {
-		input.disabled = true;
-	});
-
+	defaultEnableGameInput(false);
 	createAndSendMessage("The game has now ended; please return to the lobby to continue playing.", "primary", false);
 
 	if (defaultMultiplayerGameConnection) {
