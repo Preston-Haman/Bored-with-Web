@@ -65,7 +65,7 @@ namespace Bored_with_Web.Hubs
 		/// <br></br><br></br>
 		/// The client's own name will appear in the list of players.
 		/// </summary>
-		/// <param name="players">The names of the players in the game, in the order of their player number (offset by 1; index 0 is player 1, and so on).</param>
+		/// <param name="players">The names of the players in the game, the indices match with <paramref name="playerNumbers"/>.</param>
 		/// <param name="playerNumbers">The numeric representation of each player listed in <paramref name="players"/>.</param>
 		/// <param name="spectators">The names of the users spectating the game.</param>
 		Task UpdateVisiblePlayers(string[] players, int[] playerNumbers, string[] spectators);

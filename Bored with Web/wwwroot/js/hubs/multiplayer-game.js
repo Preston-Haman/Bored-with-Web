@@ -164,16 +164,21 @@ function spectatorDisconnected(spectatorName) {
  * 		This list will be used to display the players in the current game;
  * 		and each player <li> will be given an id of "player-x"; where "x" is the player's number for the game.
  * 
- * @param {String[]} players - The names of the players in the game, in the order of their player number (offset by 1; index 0 is player 1, and so on).
+ * @param {String[]} players - The names of the players in the game, the indices match with playerNumbers.
+ * @param {Number[]} playerNumbers - The numeric representation of each player listed in players.
  * @param {String[]} spectators - The names of the users spectating the game.
  */
-function updateVisiblePlayers(players, spectators) {
+function updateVisiblePlayers(players, playerNumbers, spectators) {
 	//Get player-list; it's a <ul>
 	let playerList = document.querySelector(".player-list");
+	if (playerList) {
+		//Clear the list out first, if it exists.
+		playerList.replaceChildren();
+	}
 
 	players.forEach(function (player, index) {
 		//Elements with "player-x" id are meant for the player's name.
-		let playerId = `player-${index + 1}`;
+		let playerId = `player-${playerNumbers[index]}`;
 		let playerNameElement = document.getElementById(playerId);
 		if (playerNameElement) {
 			playerNameElement.innerText = player;
@@ -187,6 +192,10 @@ function updateVisiblePlayers(players, spectators) {
 
 	//Get spectator list; it's a <ul>
 	let spectatorList = document.getElementById("spectator-list");
+	if (spectatorList) {
+		//Clear the list out first, if it exists.
+		spectatorList.replaceChildren();
+	}
 
 	if (spectatorList) {
 		spectators.forEach(function (spectator) {
