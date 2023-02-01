@@ -30,25 +30,6 @@ namespace Bored_with_Web.Hubs
 		/// <param name="row">The row in which the token was played.</param>
 		/// <param name="column">The column in which the token was played.</param>
 		Task TokenPlayed(int playerNumber, byte row, byte column);
-
-		/// <summary>
-		/// Called when the match has ended; if the match ended in a draw, then <paramref name="winningPlayerNumber"/>
-		/// will be zero.
-		/// </summary>
-		/// <param name="winningPlayerNumber">The player number representing the winning player; or zero, if there was no winner.</param>
-		Task MatchEnded(int winningPlayerNumber);
-
-		/// <summary>
-		/// Called when the opponent wants to challenge the player to another match. Implementations should
-		/// inform the user that this challenge was issued.
-		/// </summary>
-		Task Rematch();
-
-		/// <summary>
-		/// Called when the board has been cleared. Implementations should reset the state of their board to
-		/// an empty state.
-		/// </summary>
-		Task BoardCleared();
 	}
 
 	/// <summary>
@@ -73,40 +54,9 @@ namespace Bored_with_Web.Hubs
 		}
 #pragma warning restore CS1998
 
-		/// <summary>
-		/// Called by the client when they clear the board before the match has ended; this counts as a loss for them.
-		/// </summary>
-		public async Task ForfeitMatch()
-		{
-			ActiveGame.Forfeit(this, CurrentPlayer);
-			await Clients.Caller.BoardCleared();
-			await Clients.OthersInGroup(GameId).Rematch();
-		}
-
-		/// <summary>
-		/// Called by the client when they clear the board after the match ended.
-		/// </summary>
-		public async Task Rematch()
-		{
-			await Clients.Caller.BoardCleared();
-
-			//This could be a race condition on the client side...
-			await Clients.OthersInGroup(GameId).Rematch();
-		}
-
-		/// <summary>
-		/// Called by the client when they clear the board after their opponent challenged them to a rematch.
-		/// </summary>
-		public async Task AcceptRematch()
-		{
-			//TODO: Consider randomizing who has the first move instead of giving it to the challenged player.
-			ActiveGame.ClearBoard(this, CurrentPlayer);
-			await Clients.OthersInGroup(GameId).Rematch();
-		}
-
 		async void IConnectionGameEventHandler.ClearBoard(BoardToken newActivePlayer)
 		{
-			await Clients.Group(GameId).BoardCleared();
+			await Clients.Group(GameId).ResetGame();
 
 			int nextPlayerNumber = (int) newActivePlayer;
 			await Clients.Group(GameId).SetPlayerTurn(nextPlayerNumber);

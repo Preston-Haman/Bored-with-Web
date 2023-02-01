@@ -14,7 +14,7 @@
 <div class="c4-board">
 	@for (int i = 0; i < cols; i++)
 	{
-		<button id="btn-col-@i" class="c4-slot-btn m-1 btn btn-secondary" data-col="@i"></button>
+		<button id="btn-col-@i" class="game-input m-1 btn btn-secondary" data-col="@i"></button>
 	}
 
 	<div class="c4-cosmetic"></div>
@@ -29,5 +29,5 @@
 	}
 
 	<div class="c4-cosmetic"></div>
-	<button id="c4-clear-btn" class="btn btn-secondary"></button>
+	<button id="game-forfeit-and-rematch" class="btn btn-secondary c4-clear-btn"></button>
 </div>

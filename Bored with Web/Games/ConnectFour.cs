@@ -1,4 +1,5 @@
-﻿using Connect_X;
+﻿using Bored_with_Web.Hubs;
+using Connect_X;
 using Connect_X.Enums;
 
 namespace Bored_with_Web.Games
@@ -43,16 +44,6 @@ namespace Bored_with_Web.Games
 		private readonly ConnectionGame board;
 
 		/// <summary>
-		/// The outcomes of each match, added as they end.
-		/// </summary>
-		private List<SimpleGameOutcome> matchOutcomes = new();
-
-		/// <summary>
-		/// The outcome of the current match.
-		/// </summary>
-		private SimpleGameOutcome currentMatchOutcome = null!;
-
-		/// <summary>
 		/// Creates a standard game of Connect Four with <see cref="STANDARD_CONNECT_FOUR_ROWS"/> rows,
 		/// <see cref="STANDARD_CONNECT_FOUR_COLUMNS"/> columns, and requiring the players to connect
 		/// <see cref="STANDARD_CONNECT_FOUR_SEQUENCE_LENGTH"/> tokens in a row to win.
@@ -62,49 +53,6 @@ namespace Bored_with_Web.Games
 		public ConnectFour()
 		{
 			board = new(STANDARD_CONNECT_FOUR_ROWS, STANDARD_CONNECT_FOUR_COLUMNS, STANDARD_CONNECT_FOUR_SEQUENCE_LENGTH);
-			BeginTrackingNewMatch();
-		}
-
-		/// <summary>
-		/// Creates a standard game of Connect Four with <see cref="STANDARD_CONNECT_FOUR_ROWS"/> rows,
-		/// <see cref="STANDARD_CONNECT_FOUR_COLUMNS"/> columns, and requiring the players to connect
-		/// <see cref="STANDARD_CONNECT_FOUR_SEQUENCE_LENGTH"/> tokens in a row to win. The game will be between
-		/// the given <paramref name="player1"/> and <paramref name="player2"/>; and be tracked by the given
-		/// <paramref name="gameId"/>.
-		/// </summary>
-		/// <param name="gameId">A string identifier which must be unique to this game.</param>
-		/// <param name="player1">The first player competing in this game.</param>
-		/// <param name="player2">The second player competing in this game.</param>
-		public ConnectFour(string gameId, Player player1, Player player2)
-		{
-			board = new(STANDARD_CONNECT_FOUR_ROWS, STANDARD_CONNECT_FOUR_COLUMNS, STANDARD_CONNECT_FOUR_SEQUENCE_LENGTH);
-			base.CreateGame(CanonicalGames.GetGameInfoByRouteId("Connect-Four")!, gameId, player1, player2);
-			BeginTrackingNewMatch();
-		}
-
-		/// <summary>
-		/// Creates a custom game of Connect Four with the specified number of <paramref name="rows"/>, and <paramref name="columns"/>.
-		/// The players must connect <paramref name="winningSequenceLength"/> number of tokens in order to win. The game will be between
-		/// all given <paramref name="players"/> (up to 255); and be tracked by the given <paramref name="gameId"/>.
-		/// <br></br><br></br>
-		/// If the number of players exceeds <see cref="byte.MaxValue"/>, an <see cref="ArgumentException"/> is thrown.
-		/// </summary>
-		/// <param name="gameId">A string identified which must be unique to this game.</param>
-		/// <param name="rows">The number of rows to place on the board.</param>
-		/// <param name="columns">The number of columns to place on the board.</param>
-		/// <param name="winningSequenceLength">The number of tokens that must be placed in a row in order to win.</param>
-		/// <param name="players">The players competing in this game.</param>
-		/// <exception cref="ArgumentException">If the number of players exceeds <see cref="byte.MaxValue"/></exception>
-		public ConnectFour(string gameId, byte rows, byte columns, byte winningSequenceLength, params Player[] players)
-		{
-			if (players.Length > byte.MaxValue)
-			{
-				throw new ArgumentException($"This implementation of Connect Four does not support more than {byte.MaxValue} players.", nameof(players));
-			}
-
-			board = new(rows, columns, winningSequenceLength, (byte) players.Length);
-			base.CreateGame(CanonicalGames.GetGameInfoByRouteId("Connect-Four")!, gameId, players);
-			BeginTrackingNewMatch();
 		}
 
 		/// <summary>
@@ -131,6 +79,28 @@ namespace Bored_with_Web.Games
 			board.RefreshBoard(new ConnectionGameEventHandlerWrapper(this, handler));
 		}
 
+		public async override Task StartNewMatch<GameType, IMultiplayerClient>(MultiplayerGameHub<GameType, IMultiplayerClient> gameHub, Player externalPlayer)
+		{
+			if (gameHub is not IConnectionGameEventHandler handler)
+			{
+				throw new InvalidOperationException($"The {nameof(ConnectFour)} implementation of {nameof(ForfeitMatch)} requires the {nameof(gameHub)} to implement {nameof(IConnectionGameEventHandler)}.");
+			}
+
+			ClearBoard(handler, externalPlayer);
+			await base.StartNewMatch(gameHub, externalPlayer);
+		}
+
+		public async override Task ForfeitMatch<GameType, IMultiplayerClient>(MultiplayerGameHub<GameType, IMultiplayerClient> gameHub, Player externalPlayer)
+		{
+			if (gameHub is not IConnectionGameEventHandler handler)
+			{
+				throw new InvalidOperationException($"The {nameof(ConnectFour)} implementation of {nameof(ForfeitMatch)} requires the {nameof(gameHub)} to implement {nameof(IConnectionGameEventHandler)}.");
+			}
+
+			Forfeit(handler, externalPlayer);
+			await IssueRematch(gameHub, externalPlayer);
+		}
+
 		/// <summary>
 		/// Forfeits the game for the specified <paramref name="player"/>. This action may cause the match to end.
 		/// <br></br><br></br>
@@ -138,7 +108,7 @@ namespace Bored_with_Web.Games
 		/// </summary>
 		/// <param name="handler">An object that handles updating the caller's representation of this game.</param>
 		/// <param name="player">The <see cref="Player"/> forfeiting the game.</param>
-		public void Forfeit(IConnectionGameEventHandler handler, Player player)
+		private void Forfeit(IConnectionGameEventHandler handler, Player player)
 		{
 			Player internalPlayer = GetInternalPlayer(player);
 
@@ -158,68 +128,11 @@ namespace Bored_with_Web.Games
 		/// </summary>
 		/// <param name="handler">An object that handles updating the caller's representation of this game.</param>
 		/// <param name="hasNextTurn">The <see cref="Player"/> that will be allotted the first turn of the next match.</param>
-		public void ClearBoard(IConnectionGameEventHandler handler, Player hasNextTurn)
+		private void ClearBoard(IConnectionGameEventHandler handler, Player hasNextTurn)
 		{
 			Player internalPlayer = GetInternalPlayer(hasNextTurn);
 
 			board.ClearBoard(new ConnectionGameEventHandlerWrapper(this, handler), (BoardToken) internalPlayer.PlayerNumber);
-		}
-
-		/// <summary>
-		/// Determines if a player can leave the match without it being considered a forfeiture.
-		/// If the game is active, then the player will have to forfeit the match if they leave.
-		/// <br></br><br></br>
-		/// See <see cref="ConnectionGame.IsActive"/> for more information.
-		/// </summary>
-		/// <returns>True if the player cannot leave without forfeiting the game; false otherwise.</returns>
-		public override bool PlayerCannotLeaveWithoutForfeiting()
-		{
-			return board.IsActive;
-		}
-
-		public override bool PlayerLeft(Player player, bool isConnectionTimeout = false)
-		{
-			if (base.PlayerLeft(player, isConnectionTimeout))
-			{
-				if (PlayerCannotLeaveWithoutForfeiting())
-				{
-					currentMatchOutcome.EndState = GameEnding.INCOMPLETE;
-					currentMatchOutcome.ForfeitingPlayers.Add(player);
-				}
-				else
-				{
-					currentMatchOutcome.EndState = GameEnding.NONE;
-				}
-
-				return true;
-			}
-
-			return false;
-		}
-
-		/// <summary>
-		/// Adds the <see cref="currentMatchOutcome"/> to <see cref="matchOutcomes"/>, and then resets
-		/// <see cref="currentMatchOutcome"/> to one that is considered to be not started.
-		/// </summary>
-		private void BeginTrackingNewMatch()
-		{
-			if (currentMatchOutcome is not null)
-			{
-				matchOutcomes.Add(currentMatchOutcome);
-			}
-
-			currentMatchOutcome = new()
-			{
-				EndState = GameEnding.NONE,
-				Game = this
-			};
-		}
-
-		protected override IEnumerable<SimpleGameOutcome> GetOutcome()
-		{
-			//Add the last match to the list before returning it.
-			BeginTrackingNewMatch();
-			return matchOutcomes;
 		}
 
 		/// <summary>
@@ -230,7 +143,7 @@ namespace Bored_with_Web.Games
 			/// <summary>
 			/// The instance of <see cref="ConnectFour"/> this nested class was created by.
 			/// </summary>
-			private ConnectFour parent;
+			private readonly ConnectFour parent;
 
 			/// <summary>
 			/// The real <see cref="IConnectionGameEventHandler"/> that is being wrapped by this class.
@@ -253,6 +166,7 @@ namespace Bored_with_Web.Games
 
 			void IConnectionGameEventHandler.GameEnded(BoardToken winningPlayerToken)
 			{
+				parent.MatchIsActive = false;
 				parent.currentMatchOutcome.EndState = winningPlayerToken > 0 ? GameEnding.VICTORY : GameEnding.STALEMATE;
 				if (winningPlayerToken > 0)
 				{

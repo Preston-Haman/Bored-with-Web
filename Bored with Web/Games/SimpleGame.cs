@@ -1,4 +1,6 @@
-﻿namespace Bored_with_Web.Games
+﻿using Bored_with_Web.Hubs;
+
+namespace Bored_with_Web.Games
 {
 	/// <summary>
 	/// An attribute that must be applied to concrete implementations of <see cref="SimpleGame"/>.
@@ -31,26 +33,13 @@
 		}
 	}
 
-	//TODO: Integrate into SimpleGame; I see no reason for this interface to exist separately.
-	public interface ISimpleGameCreation
-	{
-		/// <summary>
-		/// Initializes a game by applying the given <paramref name="gameId"/> and <paramref name="players"/>
-		/// to the internal state.
-		/// </summary>
-		/// <param name="info">The <see cref="GameInfo"/> associated with the game being created.</param>
-		/// <param name="gameId">A string representing this instance of a game.</param>
-		/// <param name="players">The players that will be competing in this game.</param>
-		public void CreateGame(GameInfo info, string gameId, params Player[] players);
-	}
-
 	/// <summary>
 	/// Represents a game where the internal state is simple in nature. Examples might include Connect Four, Checkers, and Chess.
 	/// <br></br><br></br>
 	/// Subclasses must offer a parameterless constructor. This class hierarchy is generally meant to be instantiated through
 	/// reflection; once the class instance has been created, a call to <see cref="CreateGame(GameInfo, string, Player[])"/> should be made.
 	/// </summary>
-	public abstract class SimpleGame : ISimpleGameCreation
+	public abstract class SimpleGame
 	{
 		/// <summary>
 		/// Information about the game represented.
@@ -80,6 +69,40 @@
 		/// </summary>
 		public bool Started { get; private set; } = false;
 
+		/// <summary>
+		/// Whether this game has an ongoing match or not. The match is considered active if the players
+		/// are still capable of performing inputs that alter the game's state.
+		/// </summary>
+		public bool MatchIsActive { get; protected set; } = true;
+
+		/// <summary>
+		/// Whether or not a rematch notification went out to the players in this game.
+		/// </summary>
+		public bool RematchWasIssued { get; set; } = false;
+
+		/// <summary>
+		/// The players who accepted a rematch and are waiting for the match to begin.
+		/// </summary>
+		private HashSet<Player> RematchPlayers { get; } = new();
+
+		/// <summary>
+		/// The outcomes of each match, added as they end.
+		/// </summary>
+		private readonly List<SimpleGameOutcome> matchOutcomes = new();
+
+		/// <summary>
+		/// The outcome of the current match. Subclasses are responsible for updating this member as
+		/// their game state changes.
+		/// </summary>
+		protected SimpleGameOutcome currentMatchOutcome = null!;
+
+		/// <summary>
+		/// Initializes a game by applying the given <paramref name="gameId"/> and <paramref name="players"/>
+		/// to the internal state.
+		/// </summary>
+		/// <param name="info">The <see cref="GameInfo"/> associated with the game being created.</param>
+		/// <param name="gameId">A string representing this instance of a game.</param>
+		/// <param name="players">The players that will be competing in this game.</param>
 		public void CreateGame(GameInfo info, string gameId, params Player[] players)
 		{
 			if (Attribute.GetCustomAttribute(this.GetType(), typeof(GameAttribute)) is not GameAttribute game)
@@ -102,6 +125,7 @@
 				player.PlayerNumber = i + 1;
 				Players.Add(player);
 			}
+			BeginTrackingNewMatch();
 		}
 
 		/// <summary>
@@ -140,7 +164,7 @@
 		{
 			if (!Started) return true;
 
-			return (from Player p in Players where p.Ready select p).Any();
+			return (from Player p in Players where p.Ready && !p.Left select p).Any();
 		}
 
 		/// <summary>
@@ -162,37 +186,174 @@
 		/// <summary>
 		/// Determines if a player can leave the game without forfeiting, and returns the result.
 		/// <br></br><br></br>
-		/// The default implementation found in <see cref="SimpleGame"/> just directly returns true.
+		/// The default implementation found in <see cref="SimpleGame"/> just directly returns <see cref="MatchIsActive"/>.
 		/// </summary>
 		/// <returns>True if a player can leave the game without being counted as a loss; false otherwise.</returns>
 		public virtual bool PlayerCannotLeaveWithoutForfeiting()
 		{
-			return true;
+			return MatchIsActive;
 		}
 
 		/// <summary>
-		/// Removes the specified player from the game. Returns true if this action has caused the game to end.
+		/// Removes the specified player from the game. Returns true if this action should cause the game to end.
 		/// <br></br><br></br>
-		/// The default implementation found in <see cref="SimpleGame"/> will removed the <paramref name="player"/> from
-		/// <see cref="Players"/>, and end the game if the required number of players are no longer available.
+		/// The default implementation found in <see cref="SimpleGame"/> will mark the <paramref name="player"/> from
+		/// <see cref="Players"/> as having left, and end the game if the required number of players are no longer available.
 		/// </summary>
 		/// <param name="player">The player that is leaving the game.</param>
 		/// <param name="isConnectionTimeout">If the player's connection timed out or not.</param>
-		/// <returns>True if the game ends because this player left; false otherwise.</returns>
+		/// <returns>True if the game should end because this player left; false otherwise.</returns>
 		public virtual bool PlayerLeft(Player player, bool isConnectionTimeout = false)
 		{
 			Player internalPlayer = GetInternalPlayer(player);
 			internalPlayer.Left = true;
 
+			if (PlayerCannotLeaveWithoutForfeiting())
+			{
+				currentMatchOutcome.ForfeitingPlayers.Add(internalPlayer);
+			}
+
 			if (Info.RequiredPlayerCount > (from players in Players
 											where !players.Left
 											select players).Count())
 			{
-				EndGame();
+				//The game is ending because they left; if they have to forfeit, the match is incomplete.
+				currentMatchOutcome.EndState = PlayerCannotLeaveWithoutForfeiting() ? GameEnding.INCOMPLETE : GameEnding.NONE;
 				return true;
 			}
 
 			return false;
+		}
+
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously; it's async for subclasses to use gameHub methods.
+		/// <summary>
+		/// Changes the game's internal state to that of the starting state.
+		/// <br></br><br></br>
+		/// The default implementation found in <see cref="SimpleGame"/> only cleans some cached data relating to rematch functionality,
+		/// and makes a call to <see cref="BeginTrackingNewMatch"/>.
+		/// <br></br><br></br>
+		/// Subclasses of <see cref="SimpleGame"/> should override this method and call the base implementation. The subclass
+		/// implementation should set the values for <see cref="currentMatchOutcome"/> to reflect how the previous match ended during this method
+		/// before calling the base implementation.
+		/// </summary>
+		public async virtual Task StartNewMatch<GameType, IMultiplayerClient>(MultiplayerGameHub<GameType, IMultiplayerClient> gameHub, Player externalPlayer)
+			where GameType : SimpleGame
+			where IMultiplayerClient : class, IMultiplayerGameClient
+		{
+			MatchIsActive = true; //This change has to happen after the rematch notification
+			RematchWasIssued = false;
+			RematchPlayers.Clear();
+			BeginTrackingNewMatch();
+		}
+#pragma warning restore CS1998
+
+		/// <summary>
+		/// Forfeits the given <paramref name="externalPlayer"/> from the current match. The <paramref name="gameHub"/>
+		/// will be tasked with sending this information to the clients. If the match can no longer continue, then
+		/// a call to <see cref="MultiplayerGameHub{,}.IssueRematchNotification()"/> is made.
+		/// <br></br><br></br>
+		/// The default implementation found in <see cref="SimpleGame"/> adds the internal player that represents the given
+		/// <paramref name="externalPlayer"/> to <see cref="currentMatchOutcome"/>'s <see cref="SimpleGameOutcome.ForfeitingPlayers"/>
+		/// list; then, asks the <paramref name="gameHub"/> to notify the other players. If the number of competing players
+		/// has dropped to 1, a rematch is also issued.
+		/// </summary>
+		/// <param name="gameHub">The hub handling the network connections for this game.</param>
+		/// <param name="externalPlayer">The player that is forfeiting the match.</param>
+		public async virtual Task ForfeitMatch<GameType, IMultiplayerClient>(MultiplayerGameHub<GameType, IMultiplayerClient> gameHub, Player externalPlayer)
+			where GameType : SimpleGame
+			where IMultiplayerClient : class, IMultiplayerGameClient
+		{
+			Player internalPlayer = GetInternalPlayer(externalPlayer);
+			if (!currentMatchOutcome.ForfeitingPlayers.Contains(internalPlayer))
+			{
+				currentMatchOutcome.ForfeitingPlayers.Add(internalPlayer);
+
+				//Add the player to the rematch list; if they don't want to rematch, they can leave when the game ends.
+				//However, if their forfeiture is ending the game, then they are implying they want to rematch by
+				//forfeiting the match instead of leaving the game.
+				RematchPlayers.Add(internalPlayer);
+
+				await gameHub.NotifyOthersOfCallerMatchForfeiture();
+
+				//If the match is ending because of this forfeiture
+				if (currentMatchOutcome.ForfeitingPlayers.Count > ((from player in Players
+																	where !player.Left
+																	select player).Count() - 2))
+				{
+					MatchIsActive = false;
+					currentMatchOutcome.EndState = GameEnding.INCOMPLETE;
+
+					RematchWasIssued = true;
+					await gameHub.IssueRematchNotification();
+				}
+			}
+		}
+
+		/// <summary>
+		/// Issues a rematch from <paramref name="externalPlayer"/> to all other players.
+		/// </summary>
+		/// <param name="gameHub">The hub handling the network connections for this game.</param>
+		/// <param name="externalPlayer">The player that is issuing the rematch.</param>
+		public async Task IssueRematch<GameType, IMultiplayerClient>(MultiplayerGameHub<GameType, IMultiplayerClient> gameHub, Player externalPlayer)
+			where GameType : SimpleGame
+			where IMultiplayerClient : class, IMultiplayerGameClient
+		{
+			Player internalPlayer = GetInternalPlayer(externalPlayer);
+			RematchWasIssued = true;
+			RematchPlayers.Add(internalPlayer);
+
+			await gameHub.IssueRematchNotification();
+		}
+
+		/// <summary>
+		/// This method should be called when a player accepts a rematch challenge, or leaves the game after being issued one.
+		/// <br></br><br></br>
+		/// As players accept the rematch, their game will be reset via the <paramref name="gameHub"/>. When all players
+		/// have either accepted the rematch, or left, a new match will begin if possible. Whether a new match begins,
+		/// or the overall game session ends, the players will be notified via the <paramref name="gameHub"/>.
+		/// <br></br><br></br>
+		/// If this is being called from a player leaving, the call to <see cref="PlayerLeft"/> should occur first.
+		/// 
+		/// </summary>
+		/// <param name="gameHub">The hub handling the network connections for this game.</param>
+		/// <param name="externalPlayer">The player accepting the rematch or leaving.</param>
+		public async virtual Task AcceptRematchOrLeave<GameType, IMultiplayerClient>(MultiplayerGameHub<GameType, IMultiplayerClient> gameHub, Player externalPlayer)
+			where GameType : SimpleGame
+			where IMultiplayerClient : class, IMultiplayerGameClient
+		{
+			if (!RematchWasIssued)
+			{
+				throw new InvalidOperationException("There are no active rematch requests to accept.");
+			}
+
+			Player internalPlayer = GetInternalPlayer(externalPlayer);
+			if (!internalPlayer.Left)
+			{
+				if (RematchPlayers.Add(internalPlayer))
+				{
+					await gameHub.AcceptRematch();
+				}
+			}
+			else
+			{
+				//If they left, then we should remove them from RematchPlayers; 'though, it's not strictly necessary.
+				RematchPlayers.Remove(internalPlayer);
+			}
+
+			if (RematchPlayers.Count >= (from player in Players where !player.Left select player).Count())
+			{
+				//If all remaining players are waiting for the rematch to begin...
+				if (RematchPlayers.Count >= Info.RequiredPlayerCount)
+				{
+					//... and enough of them remain to continue: Start a new match.
+					await StartNewMatch(gameHub, internalPlayer);
+				}
+				else
+				{
+					//... but there aren't enough of them to continue: End the game session.
+					await gameHub.EndGameSession();
+				}
+			}
 		}
 
 		/// <summary>
@@ -225,6 +386,24 @@
 		}
 
 		/// <summary>
+		/// Adds the <see cref="currentMatchOutcome"/> to <see cref="matchOutcomes"/>, and then resets
+		/// <see cref="currentMatchOutcome"/> to one that is considered to be not started.
+		/// </summary>
+		protected void BeginTrackingNewMatch()
+		{
+			if (currentMatchOutcome is not null)
+			{
+				matchOutcomes.Add(currentMatchOutcome);
+			}
+
+			currentMatchOutcome = new()
+			{
+				EndState = GameEnding.NONE,
+				Game = this
+			};
+		}
+
+		/// <summary>
 		/// Returns the outcome of this game's competition. Games that allow matches may return multiple
 		/// outcomes, one for each match. This method is only called when the game ends, with the returned value
 		/// being published out to subscribers of <see cref="OnGameEnded"/>.
@@ -233,6 +412,11 @@
 		/// and the list of players that won, lost, or forfeited. See <see cref="SimpleGameOutcome"/> for more information.
 		/// </summary>
 		/// <returns>The outcome, or list of outcomes, of this game.</returns>
-		protected abstract IEnumerable<SimpleGameOutcome> GetOutcome();
+		protected virtual IEnumerable<SimpleGameOutcome> GetOutcome()
+		{
+			//Add the last match to the list before returning it.
+			BeginTrackingNewMatch();
+			return matchOutcomes;
+		}
 	}
 }
