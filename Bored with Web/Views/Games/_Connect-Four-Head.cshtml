@@ -16,13 +16,9 @@
 	const CE_CONNECT_FOUR_TOKEN_PLAYED = "@nameof(IConnectFourClient.TokenPlayed)";
 	const CE_CONNECT_FOUR_MATCH_ENDED = "@nameof(IConnectFourClient.MatchEnded)";
 	const CE_CONNECT_FOUR_REMATCH = "@nameof(IConnectFourClient.Rematch)";
-	const CE_CONNECT_FOUR_BOARD_CLEARED = "@nameof(IConnectFourClient.BoardCleared)";
 
 	@* Server events *@
 	const SE_CONNECT_FOUR_PLAY_TOKEN = "@nameof(ConnectFourHub.PlayToken)";
-	const SE_CONNECT_FOUR_FORFEIT_MATCH = "@nameof(ConnectFourHub.ForfeitMatch)";
-	const SE_CONNECT_FOUR_REMATCH = "@nameof(ConnectFourHub.Rematch)";
-	const SE_CONNECT_FOUR_ACCEPT_REMATCH = "@nameof(ConnectFourHub.AcceptRematch)";
 </script>
 
 <style>
@@ -40,7 +36,7 @@
 		grid-template-columns: repeat(@cols, 5em);
 	}
 
-	#c4-clear-btn {
+	.c4-clear-btn {
 		@* The same as c4-board height, minus what's used by the button *@
 		top: calc(1em + 0.25em + calc(@rows * 5em) + 0.25em);
 		grid-column: 1 / span @cols;
