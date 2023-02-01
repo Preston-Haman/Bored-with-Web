@@ -23,14 +23,9 @@ var isUserTurn = false;
 var ourPlayerNumber = 0;
 
 /**
- * If the user has issued a rematch to their opponent or not.
+ * If a rematch request was issued to the user or not.
  */
-let userIssuedRematch = false;
-
-/**
- * If the opponent has issued a rematch to the user or not.
- */
-let opponentIssuedRematch = false;
+let rematchWasIssued = false;
 
 /**
  * Associates default implementations for IMultiplayerGameClient with the given connection.
@@ -61,6 +56,7 @@ function useDefaultMultiplayerGameConnectionEvents(connection, gameResetCallback
 	connection.on(CE_MULTIPLAYER_GAME_SET_PLAYER_TURN, setPlayerTurn);
 	connection.on(CE_MULTIPLAYER_GAME_MATCH_ENDED, matchEnded);
 	connection.on(CE_MULTIPLAYER_GAME_REMATCH, rematch);
+	connection.on(CE_MULTIPLAYER_GAME_REMATCH_ACCEPTED, rematchAccepted);
 	connection.on(CE_MULTIPLAYER_GAME_RESET_GAME, resetGame);
 	connection.on(CE_MULTIPLAYER_GAME_END_GAME, endGame);
 
@@ -76,19 +72,16 @@ function useDefaultMultiplayerGameConnectionEvents(connection, gameResetCallback
 			//Regardless of what's going on, we're only triggering the rematch Server Event.
 			if (userCanForfeitOrReMatch()) {
 				forfeitAndRematchButton.disabled = true;
-				if (!opponentIssuedRematch) {
-					userIssuedRematch = true;
+				if (!rematchWasIssued) {
+					//If the opponent already issued a rematch, then we are just accepting it and don't need a message.
+					//Otherwise, we are issuing a rematch to the opponent; and, if the match is active, forfeiting it.
+					rematchWasIssued = true;
+					createAndSendMessage("You've requested a rematch! Please wait for the other player(s).");
 				}
 
 				defaultMultiplayerGameConnection.invoke(SE_MULTIPLAYER_GAME_FORFEIT_AND_REMATCH).then(function () {
-					if (!opponentIssuedRematch) {
-						//If the opponent already issued a rematch, then we are just accepting it and don't need a message.
-						//Otherwise, we are issuing a rematch to the opponent; and, if the match is active, forfeiting it.
-						createAndSendMessage("You've requested a rematch! Please wait for the other player(s).");
-					}
 					forfeitAndRematchButton.disabled = false;
 				}).catch(function (err) {
-					userIssuedRematch = false;
 					forfeitAndRematchButton.disabled = false;
 					return console.error(err.toString());
 				});
@@ -180,7 +173,7 @@ function playerDisconnected(playerName, playerNumber, timeoutInSeconds) {
  * 
  * @param {String} playerName - The name of the connecting player.
  * @param {Number} playerNumber - The numeric identifier of the player; this is unique to this game only.
- * @param {Boolean} isConnectionTimeout - If the forfeit was caused by a disconnection or not.
+ * @param {Boolean} isConnectionTimeout - Whether or not the player automatically forfeited from their connection being timed out.
  */
 function playerForfeited(playerName, playerNumber, isConnectionTimeout) {
 	if (isConnectionTimeout) {
@@ -342,7 +335,7 @@ function setPlayerTurn(playerNumber) {
  * @param {Number} playerNumber - The number representing the player that forfeited the match.
  */
 function playerForfeitedMatch(playerName, playerNumber) {
-	createAndSendMessage(`${playerName} has forfeited the current match.`, "danger");
+	createAndSendMessage(`${playerName} has forfeited the current match.`);
 	document.getElementById(`player-${playerNumber}`).innerText = `${playerName} {Forfeit}`;
 }
 
@@ -358,6 +351,7 @@ function playerForfeitedMatch(playerName, playerNumber) {
  */
 function matchEnded(winningPlayerNumber) {
 	defaultEnableGameInput(false);
+	setPlayerTurn(0);
 
 	//TODO: Consider changing this text based on how the match ends.
 	let title = "The Match is Over!";
@@ -381,33 +375,42 @@ function matchEnded(winningPlayerNumber) {
 
 /**
  * Displays a message to the user that their opponent has challenged them to a rematch.
- * Alternatively, if this user issued a rematch challenge already, then the message
- * is altered to claim the other player accepted the rematch.
  * 
  * This is meant to handle the following event, under the following conditions:
  * CE_MULTIPLAYER_GAME_REMATCH:
  * 	The existence of an element with the id of "messages" that can have bootstrap alerts appended to it.
- * 	The specific game implementation only supporting two players.
+ * 
+ * @param {String} playerName - The name of the player issuing the rematch.
+ * @param {Number} playerNumber - The number representing the player that issued the rematch.
  */
-function rematch() {
-	if (userIssuedRematch) {
-		createAndSendMessage("Your opponent accepted your rematch.");
-	} else {
-		opponentIssuedRematch = true;
-		createAndSendMessage("You were challenged to a rematch! Clear the board when you are ready.");
-	}
+function rematch(playerName, playerNumber) {
+	rematchWasIssued = true;
+	createAndSendMessage(`${playerName} wants a rematch! Click the rematch button to accept.`);
 }
 
 /**
- * Sets userIssuedRematch and opponentIssuedRematch to false, then calls gameResetCallbackFunction.
+ * Displays a message to the user that another player accepted a rematch.
+ * 
+ * This is meant to handle the following event, under the following conditions:
+ * CE_MULTIPLAYER_GAME_REMATCH:
+ * 	The existence of an element with the id of "messages" that can have bootstrap alerts appended to it.
+ * 
+ * @param {String} playerName - The name of the player accepting the rematch.
+ * @param {Number} playerNumber - The number representing the player that accepted the rematch.
+ */
+function rematchAccepted(playerName, playerNumber) {
+	createAndSendMessage(`${playerName} accepts a rematch!`);
+}
+
+/**
+ * Sets rematchWasIssued to false, then calls gameResetCallbackFunction.
  * 
  * This is meant to handle the following event, under the following conditions:
  * CE_MULTIPLAYER_GAME_RESET_GAME:
  * 	The existence of gameResetCallbackFunction, specified via useDefaultMultiplayerGameConnectionEvents.
  */
 function resetGame() {
-	userIssuedRematch = false;
-	opponentIssuedRematch = false;
+	rematchWasIssued = false;
 	gameResetCallbackFunction();
 }
 

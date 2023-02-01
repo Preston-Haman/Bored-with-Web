@@ -225,11 +225,12 @@ namespace Bored_with_Web.Games
 			return false;
 		}
 
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously; it's async for subclasses to use gameHub methods.
 		/// <summary>
 		/// Changes the game's internal state to that of the starting state.
 		/// <br></br><br></br>
 		/// The default implementation found in <see cref="SimpleGame"/> only cleans some cached data relating to rematch functionality,
-		/// and makes a call to <see cref="MultiplayerGameHub{,}.IssueRematchNotification(bool)"/> and <see cref="BeginTrackingNewMatch"/>.
+		/// and makes a call to <see cref="BeginTrackingNewMatch"/>.
 		/// <br></br><br></br>
 		/// Subclasses of <see cref="SimpleGame"/> should override this method and call the base implementation. The subclass
 		/// implementation should set the values for <see cref="currentMatchOutcome"/> to reflect how the previous match ended during this method
@@ -239,19 +240,17 @@ namespace Bored_with_Web.Games
 			where GameType : SimpleGame
 			where IMultiplayerClient : class, IMultiplayerGameClient
 		{
-			//This is the second rematch notification; that will be interpreted by the client as their opponents accepting the rematch.
-			await gameHub.IssueRematchNotification(includeCaller: true);
 			MatchIsActive = true; //This change has to happen after the rematch notification
 			RematchWasIssued = false;
 			RematchPlayers.Clear();
 			BeginTrackingNewMatch();
 		}
+#pragma warning restore CS1998
 
 		/// <summary>
 		/// Forfeits the given <paramref name="externalPlayer"/> from the current match. The <paramref name="gameHub"/>
 		/// will be tasked with sending this information to the clients. If the match can no longer continue, then
-		/// a call to <see cref="MultiplayerGameHub{,}.ResetCallerGame"/> and <see cref="MultiplayerGameHub{,}.IssueRematchNotification(bool)"/>
-		/// is made.
+		/// a call to <see cref="MultiplayerGameHub{,}.IssueRematchNotification()"/> is made.
 		/// <br></br><br></br>
 		/// The default implementation found in <see cref="SimpleGame"/> adds the internal player that represents the given
 		/// <paramref name="externalPlayer"/> to <see cref="currentMatchOutcome"/>'s <see cref="SimpleGameOutcome.ForfeitingPlayers"/>
@@ -264,21 +263,46 @@ namespace Bored_with_Web.Games
 			where GameType : SimpleGame
 			where IMultiplayerClient : class, IMultiplayerGameClient
 		{
-			currentMatchOutcome.ForfeitingPlayers.Add(GetInternalPlayer(externalPlayer));
-			await gameHub.NotifyOthersOfCallerMatchForfeiture();
-
-			//If the match is ending because of this forfeiture
-			if (currentMatchOutcome.ForfeitingPlayers.Count > ((from player in Players
-																where !player.Left
-																select player).Count() - 2))
+			Player internalPlayer = GetInternalPlayer(externalPlayer);
+			if (!currentMatchOutcome.ForfeitingPlayers.Contains(internalPlayer))
 			{
-				MatchIsActive = false;
-				currentMatchOutcome.EndState = GameEnding.INCOMPLETE;
+				currentMatchOutcome.ForfeitingPlayers.Add(internalPlayer);
 
-				RematchWasIssued = true;
-				await gameHub.ResetCallerGame();
-				await gameHub.IssueRematchNotification();
+				//Add the player to the rematch list; if they don't want to rematch, they can leave when the game ends.
+				//However, if their forfeiture is ending the game, then they are implying they want to rematch by
+				//forfeiting the match instead of leaving the game.
+				RematchPlayers.Add(internalPlayer);
+
+				await gameHub.NotifyOthersOfCallerMatchForfeiture();
+
+				//If the match is ending because of this forfeiture
+				if (currentMatchOutcome.ForfeitingPlayers.Count > ((from player in Players
+																	where !player.Left
+																	select player).Count() - 2))
+				{
+					MatchIsActive = false;
+					currentMatchOutcome.EndState = GameEnding.INCOMPLETE;
+
+					RematchWasIssued = true;
+					await gameHub.IssueRematchNotification();
+				}
 			}
+		}
+
+		/// <summary>
+		/// Issues a rematch from <paramref name="externalPlayer"/> to all other players.
+		/// </summary>
+		/// <param name="gameHub">The hub handling the network connections for this game.</param>
+		/// <param name="externalPlayer">The player that is issuing the rematch.</param>
+		public async Task IssueRematch<GameType, IMultiplayerClient>(MultiplayerGameHub<GameType, IMultiplayerClient> gameHub, Player externalPlayer)
+			where GameType : SimpleGame
+			where IMultiplayerClient : class, IMultiplayerGameClient
+		{
+			Player internalPlayer = GetInternalPlayer(externalPlayer);
+			RematchWasIssued = true;
+			RematchPlayers.Add(internalPlayer);
+
+			await gameHub.IssueRematchNotification();
 		}
 
 		/// <summary>
@@ -305,9 +329,10 @@ namespace Bored_with_Web.Games
 			Player internalPlayer = GetInternalPlayer(externalPlayer);
 			if (!internalPlayer.Left)
 			{
-				//This means they accepted the rematch and their game should reset.
-				RematchPlayers.Add(internalPlayer);
-				await gameHub.ResetCallerGame();
+				if (RematchPlayers.Add(internalPlayer))
+				{
+					await gameHub.AcceptRematch();
+				}
 			}
 			else
 			{
@@ -315,18 +340,19 @@ namespace Bored_with_Web.Games
 				RematchPlayers.Remove(internalPlayer);
 			}
 
-			//If all remaining players are waiting for the rematch to begin, and there are enough of them to continue.
-			if (RematchPlayers.Count >= ((from player in Players
-										  where !player.Left
-										  select player).Count())
-				&& RematchPlayers.Count >= Info.RequiredPlayerCount)
+			if (RematchPlayers.Count >= (from player in Players where !player.Left select player).Count())
 			{
-				//Start a new match.
-				await StartNewMatch(gameHub, internalPlayer);
-			}
-			else
-			{
-				await gameHub.EndGameSession();
+				//If all remaining players are waiting for the rematch to begin...
+				if (RematchPlayers.Count >= Info.RequiredPlayerCount)
+				{
+					//... and enough of them remain to continue: Start a new match.
+					await StartNewMatch(gameHub, internalPlayer);
+				}
+				else
+				{
+					//... but there aren't enough of them to continue: End the game session.
+					await gameHub.EndGameSession();
+				}
 			}
 		}
 
