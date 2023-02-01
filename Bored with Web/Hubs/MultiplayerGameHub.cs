@@ -100,8 +100,8 @@ namespace Bored_with_Web.Hubs
 		Task MatchEnded(int winningPlayerNumber);
 
 		/// <summary>
-		/// Called when the opponent wants to challenge the player to another match. Implementations should
-		/// inform the user that this challenge was issued.
+		/// Called when the opponent wants to challenge the player to another match; or when an existing rematch challenge was accepted.
+		/// Implementations should inform the user that this challenge was issued; or, that the challenge was accepted.
 		/// </summary>
 		Task Rematch();
 
@@ -260,11 +260,19 @@ namespace Bored_with_Web.Hubs
 			}
 		}
 
+		/// <summary>
+		/// Sends out a a forfeit notification to all other players in the game.
+		/// </summary>
 		public virtual async Task NotifyOthersOfCallerMatchForfeiture()
 		{
 			await Clients.OthersInGroup(GameId).PlayerForfeitedMatch(CurrentPlayer.Username, CurrentPlayerNumber);
 		}
 
+		/// <summary>
+		/// Sends out a rematch notification to all players. If the caller should be included
+		/// in this list, pass <paramref name="includeCaller"/> as true.
+		/// </summary>
+		/// <param name="includeCaller">Whether or not the caller should also be sent a notification.</param>
 		public virtual async Task IssueRematchNotification(bool includeCaller = false)
 		{
 			if (!ActiveGame.MatchIsActive)
@@ -280,11 +288,17 @@ namespace Bored_with_Web.Hubs
 			}
 		}
 
+		/// <summary>
+		/// Sends a notification to the caller that their game's state should be reset to the initial one.
+		/// </summary>
 		public virtual async Task ResetCallerGame()
 		{
 			await Clients.Caller.ResetGame();
 		}
 
+		/// <summary>
+		/// Informs connected clients that the game session has ended.
+		/// </summary>
 		public virtual async Task EndGameSession()
 		{
 			await Clients.Group(GameId).EndGame();
