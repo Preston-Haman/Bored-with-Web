@@ -63,5 +63,15 @@
 		/// The number of turns taken by each player.
 		/// </summary>
 		public Dictionary<Player, int> PlayerTurnCounts { get; set; } = new();
+
+		/// <summary>
+		/// Whether or not this game outcome contains valid information stored in <see cref="GameEventsBlob"/>.
+		/// </summary>
+		public bool HasReplayData { get { return GameEventsBlob.Length > 0; } }
+
+		/// <summary>
+		/// A binary serialization of the events that took place during the game.
+		/// </summary>
+		public byte[] GameEventsBlob { get; set; } = Array.Empty<byte>();
 	}
 }

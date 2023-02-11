@@ -52,8 +52,25 @@ namespace Bored_with_Web.Data
 				}
 			}
 
+			bool hasNonGuest = false;
+			List<GameMatchParticipant> matchParticipants = new(outcome.Game.Players.Count);
+			GameMatch match = new()
+			{
+				GameRouteId = outcome.Game.Info.RouteId,
+				MatchBlob = outcome.GameEventsBlob
+			};
+
 			foreach (Player player in outcome.Game.Players)
 			{
+				if (outcome.HasReplayData)
+				{
+					matchParticipants.Add(new GameMatchParticipant()
+					{
+						Match = match,
+						ParticipantUsername = player.Username
+					});
+				}
+
 				bool newDbRecord = false;
 
 				if (IsGuest(player))
@@ -63,6 +80,8 @@ namespace Bored_with_Web.Data
 				}
 				else
 				{
+					hasNonGuest = true;
+
 					GameStatistic? dbStats = (from gameStats in dbContext.GameStatistics
 											  where gameStats.Username == player.Username && gameStats.GameRouteId == outcome.Game.Info.RouteId
 											  select gameStats).SingleOrDefault();
@@ -86,9 +105,18 @@ namespace Bored_with_Web.Data
 					{
 						dbContext.GameStatistics.Update(dbStats);
 					}
-
-					await dbContext.SaveChangesAsync();
 				}
+			}
+
+			if (hasNonGuest)
+			{
+				if (outcome.HasReplayData)
+				{
+					dbContext.GameMatches.Add(match);
+					dbContext.GameMatchParticipants.AddRange(matchParticipants);
+				}
+
+				await dbContext.SaveChangesAsync();
 			}
 		}
 	}

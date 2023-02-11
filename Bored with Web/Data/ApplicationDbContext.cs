@@ -13,6 +13,10 @@ namespace Bored_with_Web.Data
 
 		public DbSet<GameStatistic> GameStatistics { get; set; } = null!;
 
+		public DbSet<GameMatch> GameMatches { get; set; } = null!;
+
+		public DbSet<GameMatchParticipant> GameMatchParticipants { get; set; } = null!;
+
 		protected override void OnModelCreating(ModelBuilder builder)
 		{
 			base.OnModelCreating(builder);
