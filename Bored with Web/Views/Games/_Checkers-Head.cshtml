@@ -1,0 +1,27 @@
+﻿@using Bored_with_Web.Hubs
+@{
+	string url = $"/{nameof(CheckersHub)}?game={ViewData["gameId"]}";
+}
+
+<script>
+	@* Client constants *@
+	const CHECKERS_CONNECTION_BUILDER = new signalR.HubConnectionBuilder().withUrl("@url");
+	const CHECKERS_BOARD_SIZE = 8;
+	const CHECKERS_DEFAULT_BOARD_STATE =
+		new Uint8Array([1, 0, 1, 0, 1, 0, 1, 0,
+						0, 1, 0, 1, 0, 1, 0, 1,
+						1, 0, 1, 0, 1, 0, 1, 0,
+						0, 0, 0, 0, 0, 0, 0, 0,
+						0, 0, 0, 0, 0, 0, 0, 0,
+						0, 3, 0, 3, 0, 3, 0, 3,
+						3, 0, 3, 0, 3, 0, 3, 0,
+						0, 3, 0, 3, 0, 3, 0, 3]);
+	
+	@* Client events *@
+	const CE_CHECKERS_JOINED = "@nameof(ICheckersClient.Joined)";
+	const CE_CHECKERS_TOKEN_PLAYED = "@nameof(ICheckersClient.TokenPlayed)";
+	const CE_CHECKERS_TOKEN_KINGED = "@nameof(ICheckersClient.TokenKinged)";
+
+	@* Server events *@
+	const SE_CHECKERS_PLAY_TOKEN = "@nameof(CheckersHub.PlayToken)";
+</script>
