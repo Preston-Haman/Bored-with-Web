@@ -274,7 +274,7 @@ namespace Bored_with_Web.Hubs
 		/// </summary>
 		public virtual async Task AcceptRematch()
 		{
-			await Clients.Caller.ResetGame();
+			await ResetCallerGame();
 			await Clients.OthersInGroup(GameId).RematchAccepted(CurrentPlayer.Username, CurrentPlayerNumber);
 		}
 
@@ -294,7 +294,7 @@ namespace Bored_with_Web.Hubs
 		{
 			if (!ActiveGame.MatchIsActive)
 			{
-				await Clients.Caller.ResetGame();
+				await ResetCallerGame();
 				await Clients.OthersInGroup(GameId).Rematch(CurrentPlayer.Username, CurrentPlayerNumber);
 			}
 		}
@@ -305,6 +305,31 @@ namespace Bored_with_Web.Hubs
 		public virtual async Task ResetCallerGame()
 		{
 			await Clients.Caller.ResetGame();
+		}
+
+		/// <summary>
+		/// Sends a notification to the clients participating in the game that the match has ended with the
+		/// specified <paramref name="winner"/>. In the case that the game ended without a victor, i.e.:
+		/// <paramref name="winner"/> is null, the clients will be notified of a stalemate.
+		/// </summary>
+		/// <param name="winner">The player who has emerged victorious, or null if there was no victor.</param>
+		public virtual async Task EndMatch(Player? winner = null)
+		{
+			await Clients.Group(GameId).SetPlayerTurn(0);
+			await Clients.Group(GameId).MatchEnded(winner?.PlayerNumber ?? 0);
+		}
+
+		/// <summary>
+		/// Sends a notification to the clients that the given player, <paramref name="hasNextTurn"/>, is
+		/// currently being allotted a turn.
+		/// <br></br><br></br>
+		/// This method makes a direct call to <see cref="IMultiplayerGameClient.SetPlayerTurn(int)"/>, and is meant
+		/// to be used externally.
+		/// </summary>
+		/// <param name="hasFirstTurn">The player with the first turn of the match.</param>
+		public async Task SetPlayerTurn(Player hasNextTurn)
+		{
+			await Clients.Group(GameId).SetPlayerTurn(hasNextTurn.PlayerNumber);
 		}
 
 		/// <summary>

@@ -225,17 +225,19 @@ namespace Bored_with_Web.Games
 			return false;
 		}
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously; it's async for subclasses to use gameHub methods.
 		/// <summary>
 		/// Changes the game's internal state to that of the starting state.
 		/// <br></br><br></br>
 		/// The default implementation found in <see cref="SimpleGame"/> only cleans some cached data relating to rematch functionality,
-		/// and makes a call to <see cref="BeginTrackingNewMatch"/>.
+		/// makes a call to <see cref="BeginTrackingNewMatch"/>, and then uses <paramref name="gameHub"/> to tell the clients that
+		/// <paramref name="externalPlayer"/> is being allotted a turn.
 		/// <br></br><br></br>
 		/// Subclasses of <see cref="SimpleGame"/> should override this method and call the base implementation. The subclass
 		/// implementation should set the values for <see cref="currentMatchOutcome"/> to reflect how the previous match ended during this method
 		/// before calling the base implementation.
 		/// </summary>
+		/// <param name="gameHub">The hub managing connections for this game.</param>
+		/// <param name="externalPlayer">The player with the first turn for the new match.</param>
 		public async virtual Task StartNewMatch<GameType, IMultiplayerClient>(MultiplayerGameHub<GameType, IMultiplayerClient> gameHub, Player externalPlayer)
 			where GameType : SimpleGame
 			where IMultiplayerClient : class, IMultiplayerGameClient
@@ -244,8 +246,8 @@ namespace Bored_with_Web.Games
 			RematchWasIssued = false;
 			RematchPlayers.Clear();
 			BeginTrackingNewMatch();
+			await gameHub.SetPlayerTurn(externalPlayer);
 		}
-#pragma warning restore CS1998
 
 		/// <summary>
 		/// Forfeits the given <paramref name="externalPlayer"/> from the current match. The <paramref name="gameHub"/>
@@ -255,7 +257,7 @@ namespace Bored_with_Web.Games
 		/// The default implementation found in <see cref="SimpleGame"/> adds the internal player that represents the given
 		/// <paramref name="externalPlayer"/> to <see cref="currentMatchOutcome"/>'s <see cref="SimpleGameOutcome.ForfeitingPlayers"/>
 		/// list; then, asks the <paramref name="gameHub"/> to notify the other players. If the number of competing players
-		/// has dropped to 1, a rematch is also issued.
+		/// has dropped to 1, the match ends; and, a rematch is also issued.
 		/// </summary>
 		/// <param name="gameHub">The hub handling the network connections for this game.</param>
 		/// <param name="externalPlayer">The player that is forfeiting the match.</param>
@@ -283,8 +285,15 @@ namespace Bored_with_Web.Games
 					MatchIsActive = false;
 					currentMatchOutcome.EndState = GameEnding.INCOMPLETE;
 
+					//Find out who wins by default
+					//The condition for arriving in this code block is that the number of competing players has dropped to 1;
+					//so, the winners set will only contain one player after the RemoveWhere call.
+					HashSet<Player> winners = new(Players);
+					winners.RemoveWhere((loser) => loser.Left || currentMatchOutcome.ForfeitingPlayers.Contains(loser));
+					
 					RematchWasIssued = true;
 					await gameHub.IssueRematchNotification();
+					await gameHub.EndMatch(winners.FirstOrDefault());
 				}
 			}
 		}
