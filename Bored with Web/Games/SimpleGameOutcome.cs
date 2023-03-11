@@ -73,5 +73,21 @@
 		/// A binary serialization of the events that took place during the game.
 		/// </summary>
 		public byte[] GameEventsBlob { get; set; } = Array.Empty<byte>();
+
+		/// <summary>
+		/// Adds 1 tracked turn to the count of turns taken by the given <paramref name="player"/> (see <seealso cref="PlayerTurnCounts"/>).
+		/// </summary>
+		/// <param name="player">The player who made a turn to be counted.</param>
+		public void IncrementPlayerTurnCount(Player player)
+		{
+			if (PlayerTurnCounts.TryGetValue(player, out int turnCount))
+			{
+				PlayerTurnCounts[player] = turnCount + 1;
+			}
+			else
+			{
+				PlayerTurnCounts.Add(player, 1);
+			}
+		}
 	}
 }

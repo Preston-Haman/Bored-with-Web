@@ -200,19 +200,7 @@ namespace Bored_with_Web.Games
 					parent.currentMatchOutcome.EndState = GameEnding.INCOMPLETE;
 				}
 
-				Player player = (from players in parent.Players
-								 where players.PlayerNumber == (int) playedToken
-								 select players).Single();
-
-				if (parent.currentMatchOutcome.PlayerTurnCounts.TryGetValue(player, out int turnCount))
-				{
-					parent.currentMatchOutcome.PlayerTurnCounts[player] = turnCount + 1;
-				}
-				else
-				{
-					parent.currentMatchOutcome.PlayerTurnCounts.Add(player, 1);
-				}
-
+				parent.currentMatchOutcome.IncrementPlayerTurnCount(parent.GetInternalPlayer((int) playedToken));
 				wrapped.TokenPlayed(playedToken, nextPlayerToken, row, column);
 			}
 		}
