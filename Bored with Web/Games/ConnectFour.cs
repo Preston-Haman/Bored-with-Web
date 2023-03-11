@@ -158,9 +158,6 @@ namespace Bored_with_Web.Games
 
 			void IConnectionGameEventHandler.ClearBoard(BoardToken newActivePlayer)
 			{
-				parent.BeginTrackingNewMatch();
-				parent.currentMatchOutcome.EndState = GameEnding.INCOMPLETE;
-
 				wrapped.ClearBoard(newActivePlayer);
 			}
 
@@ -182,6 +179,7 @@ namespace Bored_with_Web.Games
 				{
 					parent.currentMatchOutcome.LosingPlayers.UnionWith(parent.Players);
 				}
+				parent.BeginTrackingNewMatch();
 				wrapped.GameEnded(winningPlayerToken);
 			}
 
