@@ -74,6 +74,7 @@ app.MapRazorPages();
 app.MapHub<ChatHub>($"/{nameof(ChatHub)}");
 app.MapHub<GameLobbyHub>($"/{nameof(GameLobbyHub)}");
 app.MapHub<ConnectFourHub>($"/{nameof(ConnectFourHub)}");
+app.MapHub<CheckersHub>($"/{nameof(CheckersHub)}");
 
 GameService.DIServices = app.Services;
 app.Run();

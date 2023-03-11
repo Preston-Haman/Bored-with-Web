@@ -94,6 +94,34 @@ namespace Bored_with_Web.Games
 		};
 
 		/// <summary>
+		/// Information about the version of Checkers that is playable on this site.
+		/// </summary>
+		public static GameInfo Checkers { get; } = new()
+		{
+			ImplementingType = typeof(Checkers),
+			Title = "Checkers",
+			//ImageURL = "#",
+			Summary = "The Classic Diagonal-Jumping Strategy Game.",
+			Description = "Standard Checkers. This is a game in which players take turns moving coloured pieces diagonally, " +
+						  "while jumping over their opponents pieces. The first player to claim all of their opponent's pieces " +
+						  "is the winner.",
+			Rules = "Checkers is a game between two players on an 8 x 8 checkered board. Each player has 12 pieces in their own colour. " +
+					"Each player is allotted a turn, one after the other; during which, they can move one of their own pieces. Each piece " +
+					"can only move diagonally forward; that is, until reaching the other side of the board, where it is 'kinged', and can " +
+					"move diagonally forwards or backwards. In order to move a piece, the immediately adjacent tile of the board must be " +
+					"vacant; or, in the case of jumping over an opponent's piece, the next tile in the same direction must be vacant. While " +
+					"performing a jump, a piece may come to a position where it can jump again; in such a case, a chained jump must be " +
+					"performed (the same piece jumps over the next opponent piece, as well). Note that chain jumping does not allow a piece " +
+					"to move backwards if it has not yet been 'kinged'. The goal is merely to prevent one's opponent from being able to make a " +
+					"move. This can be done by removing all of their pieces from play, or by preventing their movement altogether. There are " +
+					"some constraints which make this simple concept more difficult. During their turn, if it's possible to jump over an " +
+					"opponent piece, then the player must do so. If the player touches a movable piece, it must be the piece that is moved. " +
+					"If a player cannot move a piece during their turn, they lose. If the game enters into a repeating sequence of moves, " +
+					"then the match is considered a stalemate.",
+			RequiredPlayerCount = 2
+		};
+
+		/// <summary>
 		/// A list of <see cref="GameInfo"/> instances to display and allow users to play through this site.
 		/// </summary>
 		public static IEnumerable<GameInfo> AllGames { get; }

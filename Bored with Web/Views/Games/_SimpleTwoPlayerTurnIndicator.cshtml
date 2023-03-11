@@ -1,0 +1,13 @@
+﻿@*
+	The ViewData object should contain the names of the players under the keys "player1" and "player2", if their usernames
+	are expected to be pre-populated on the indicator.
+*@
+@{
+	string player1 = ((string?) ViewData["player1"]) ?? "Player 1";
+	string player2 = ((string?) ViewData["player2"]) ?? "Player 2";
+}
+
+<div id="turn-indicator">
+	<h3 id="player-1" class="text-center text-muted">@player1</h3>
+	<h3 id="player-2" class="text-center text-muted">@player2</h3>
+</div>

@@ -3,32 +3,33 @@
 @switch (Model!.ViewState)
 {
 	case GameInfoViewState.SELECTION:
+		string collapseTarget = Model.Info.RouteId;
 		<div class="card mb-3 border-info" style="max-width: 800px;">
 			<div class="container row" style="padding: 10px 0px 10px 10px;">
 				<div class="col-md-4">
 					<img src="@Model.Info.ImageURL" class="img-fluid rounded" alt="An image depicting @Model.Info.Title">
-					<div class="collapse game-collapse">
+					<div class="collapse @collapseTarget">
 						<partial name="_GameInfoOverview.cshtml" model="@Model" />
 					</div>
 				</div>
 				<div class="col-md-8" style="padding-right: 0;">
 					<div class="card-body">
-						<div class="card-title user-select-none" role="button" data-bs-toggle="collapse" data-bs-target=".game-collapse">
+						<div class="card-title user-select-none" role="button" data-bs-toggle="collapse" data-bs-target=".@collapseTarget">
 							<h2 style="display: inline;">@Model.Info.Title</h2>
 							<div style="float: right;">
-								<svg class="collapse game-collapse show bi bi-caret-left-fill" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
+								<svg class="collapse @collapseTarget show bi bi-caret-left-fill" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
 									<path d="m3.86 8.753 5.482 4.796c.646.566 1.658.106 1.658-.753V3.204a1 1 0 0 0-1.659-.753l-5.48 4.796a1 1 0 0 0 0 1.506z" />
 								</svg>
-								<svg class="collapse game-collapse bi bi-caret-down-fill" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
+								<svg class="collapse @collapseTarget bi bi-caret-down-fill" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
 									<path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z" />
 								</svg>
 							</div>
 						</div>
 						<hr>
-						<div class="collapse game-collapse show">
+						<div class="collapse @collapseTarget show">
 							<partial name="_GameInfoOverview.cshtml" model="@Model" />
 						</div>
-						<div class="collapse game-collapse">
+						<div class="collapse @collapseTarget">
 							<p>
 								@Model.Info.Description
 							</p>
