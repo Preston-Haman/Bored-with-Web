@@ -184,6 +184,17 @@ namespace Bored_with_Web.Games
 		}
 
 		/// <summary>
+		/// Gets the player associated with the given <paramref name="playerNumber"/>. If no such player is competing
+		/// in this game, then null is returned.
+		/// </summary>
+		/// <param name="playerNumber">The number representing a player competing in this game.</param>
+		/// <returns>The competing player with the given number, or null.</returns>
+		public Player? GetPlayer(int playerNumber)
+		{
+			return (from players in Players where players.PlayerNumber == playerNumber select players).SingleOrDefault();
+		}
+
+		/// <summary>
 		/// Determines if a player can leave the game without forfeiting, and returns the result.
 		/// <br></br><br></br>
 		/// The default implementation found in <see cref="SimpleGame"/> just directly returns <see cref="MatchIsActive"/>.
@@ -389,6 +400,25 @@ namespace Bored_with_Web.Games
 			if (!Players.TryGetValue(externalPlayer, out Player? internalPlayer))
 			{
 				throw new InvalidOperationException("The given player is not a part of this game!");
+			}
+
+			return internalPlayer;
+		}
+
+		/// <summary>
+		/// Retrieves the internal player from <see cref="Players"/> with the given <paramref name="playerNumber"/>
+		/// via a call to <see cref="GetPlayer(int)"/>.
+		/// <br></br><br></br>
+		/// If the player does not exist in the current game, an <see cref="ArgumentException"/> is thrown.
+		/// </summary>
+		/// <param name="playerNumber">The number representing the player to retrieve from <see cref="Players"/></param>
+		/// <returns>The internal player from <see cref="Players"/> with the given <paramref name="playerNumber"/>.</returns>
+		/// <exception cref="ArgumentException">If a player with the given <paramref name="playerNumber"/> is not competing in this game.</exception>
+		protected Player GetInternalPlayer(int playerNumber)
+		{
+			if (GetPlayer(playerNumber) is not Player internalPlayer)
+			{
+				throw new ArgumentException("The given player number does not represent a player in this game!", nameof(playerNumber));
 			}
 
 			return internalPlayer;
