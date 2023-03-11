@@ -333,9 +333,7 @@ function enableCheckersInput(enabled = true) {
 
 function checkersSetPlayerTurn(playerNumber) {
 	setPlayerTurn(playerNumber);
-	if (isUserTurn) {
-		enableCheckersInput();
-	}
+	enableCheckersInput(isUserTurn);
 }
 
 /**
