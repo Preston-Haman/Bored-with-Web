@@ -87,6 +87,19 @@ namespace Bored_with_Web.Games
 				parent.Tiles[boardIndex] = TokenType;
 			}
 
+			public bool CanMove()
+			{
+				for (int dx = -1; dx < 2; dx += 2)
+				{
+					if (parent.IsTileVacant(X + dx, Y + ForwardDirection) || (Kinged && parent.IsTileVacant(X + dx, Y - ForwardDirection)))
+					{
+						return true;
+					}
+				}
+
+				return CanJumpAnOpponentToken();
+			}
+
 			public bool CanJumpAnOpponentToken()
 			{
 				for (int i = -1; i < 2; i += 2)
@@ -295,6 +308,27 @@ namespace Bored_with_Web.Games
 			}
 		}
 
+		/// <summary>
+		/// Checks if there are any moves remaining for the tokens of the given <paramref name="tokenType"/>, and returns true if so;
+		/// false otherwise.
+		/// </summary>
+		/// <param name="tokenType">The type of the tokens to check for remaining moves for.</param>
+		/// <returns>True if the tokens represented by the given <paramref name="tokenType"/> have any moves available.</returns>
+		public bool HasRemainingMoves(TokenType tokenType)
+		{
+			HashSet<CheckersToken> tokenSet = tokenType.IsOpponentTo(TokenType.BLACK_TOKEN) ? whiteTokens : blackTokens;
+
+			foreach (CheckersToken token in tokenSet)
+			{
+				if (token.CanMove())
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
 		private bool HasOpponentToken(int x, int y, TokenType us)
 		{
 			if (GetBoardLocation(x, y) is int location)
@@ -333,7 +367,7 @@ namespace Bored_with_Web.Games
 		}
 	}
 
-	static class CheckersBoardTokenTypeExtension
+	internal static class CheckersBoardTokenTypeExtension
 	{
 		/// <summary>
 		/// Compares <paramref name="us"/> to <paramref name="them"/> and determines if they are of opposite colour.
@@ -355,6 +389,123 @@ namespace Bored_with_Web.Games
 				_ => throw new ArgumentException($"Unsupported {nameof(CheckersBoard.TokenType)} value!", nameof(us)),
 			};
 		}
+
+		public static CheckersBoard.TokenType GetOpponentTokenType(this CheckersBoard.TokenType us)
+		{
+			return us.IsOpponentTo(CheckersBoard.TokenType.BLACK_TOKEN) ? CheckersBoard.TokenType.BLACK_TOKEN : CheckersBoard.TokenType.WHITE_TOKEN;
+		}
+	}
+
+	/// <summary>
+	/// A linked list esque class that can track previous moves and analyze them to determine if they undo each other.
+	/// </summary>
+	internal class CheckersStalemateReferee
+	{
+		/// <summary>
+		/// A linked list node
+		/// </summary>
+		private class MoveNode
+		{
+			public byte[] moves;
+			public MoveNode? next;
+
+			public MoveNode(byte[] moves)
+			{
+				this.moves = moves;
+			}
+		}
+		/// <summary>
+		/// The number of moves that must be repeated for <see cref="IsStalemate"/> to be true.
+		/// </summary>
+		public byte StalemateThreshold { get; set; } = 6;
+
+		/// <summary>
+		/// The head of the linked list
+		/// </summary>
+		private MoveNode? head;
+		
+		/// <summary>
+		/// The tail of the linked list
+		/// </summary>
+		private MoveNode? tail;
+
+		/// <summary>
+		/// The number of moves being tracked by this list. This value will not exceed twice the value of <see cref="StalemateThreshold"/>.
+		/// </summary>
+		private byte moveCount = 0;
+
+		public bool IsStalemate {
+			get
+			{
+				if (moveCount < StalemateThreshold * 2)
+				{
+					return false;
+				}
+
+				byte[][] moves = new byte[moveCount][];
+				int moveIndex = 0;
+				for (MoveNode? current = head; current is not null && moveIndex < moves.Length; current = current.next)
+				{
+					if (current.moves.Length > 2)
+					{
+						//If the move jumped over multiple tokens, then it's not a stalemate trigger.
+						return false;
+					}
+					moves[moveIndex++] = current.moves;
+				}
+
+				static bool MoveUndoesPrevious(byte[] move, byte[] previous)
+				{
+					return move[0] == previous[1] && move[1] == previous[0];
+				}
+
+				bool stalemate = true;
+
+				for (int i = moves.Length - 1; i > 1; i--)
+				{
+					stalemate &= MoveUndoesPrevious(moves[i], moves[i - 2]);
+				}
+
+				return stalemate;
+			}
+		}
+
+		/// <summary>
+		/// Adds the given <paramref name="moves"/> to the list of tracked moves.
+		/// </summary>
+		/// <param name="moves">The list of board indices representing the move being made.</param>
+		public void TrackMove(byte[] moves)
+		{
+			if (head is null)
+			{
+				head = new(moves);
+				tail = head;
+			}
+			else
+			{
+				tail!.next = new(moves);
+				tail = tail.next;
+			}
+			
+			if (moveCount == StalemateThreshold * 2)
+			{
+				head = head.next;
+			}
+			else
+			{
+				moveCount++;
+			}
+		}
+
+		/// <summary>
+		/// Clears the internal linked list of moves.
+		/// </summary>
+		public void Clear()
+		{
+			head = null;
+			tail = null;
+			moveCount = 0;
+		}
 	}
 
 	/// <summary>
@@ -368,6 +519,8 @@ namespace Bored_with_Web.Games
 		private bool tokensHaveBeenPlayed = false;
 
 		private readonly CheckersBoard board = new();
+
+		private readonly CheckersStalemateReferee referee = new();
 
 		public Checkers() //This constructor is Required by the contract of SimpleGame.
 		{
@@ -404,26 +557,50 @@ namespace Bored_with_Web.Games
 		/// <returns>True if the board has been updated by this move, false otherwise.</returns>
 		public async Task PlayToken(CheckersHub hub, byte[] moves)
 		{
-			if (!board.IsMoveSetValid(moves, ActivePlayerNumber == 1 ? CheckersBoard.TokenType.WHITE_TOKEN : CheckersBoard.TokenType.BLACK_TOKEN))
+			CheckersBoard.TokenType playedTokenType = ActivePlayerNumber == 1 ? CheckersBoard.TokenType.WHITE_TOKEN : CheckersBoard.TokenType.BLACK_TOKEN;
+			if (!board.IsMoveSetValid(moves, playedTokenType))
 			{
 				await CheckersHub.InvalidPlay(hub);
 				return;
 			}
 
-			//TODO: Move was valid, but we have to check for a stalemate! If the moves repeat for three turns, it's a stalemate.
-			//if (/* Stalemate */)
-			//{
-			//	await CheckersHub.Stalemate(hub);
-			//	return;
-			//}
+			//Track player's turn
+			if (currentMatchOutcome.EndState == GameEnding.NONE)
+			{
+				currentMatchOutcome.EndState = GameEnding.INCOMPLETE;
+			}
+			currentMatchOutcome.IncrementPlayerTurnCount(GetInternalPlayer(ActivePlayerNumber));
 
 			bool tokenKinged = board.PlayMoveSet(moves);
-			
+			tokensHaveBeenPlayed = true;
+			referee.TrackMove(moves);
+
+			//Check basic win condition (opponent can no longer make plays)
+			Player winner = GetInternalPlayer(ActivePlayerNumber);
+			bool playerWon;
+			//Assignment is intentional
+			if (playerWon = !board.HasRemainingMoves(playedTokenType.GetOpponentTokenType()))
+			{
+				MatchIsActive = false;
+				currentMatchOutcome.EndState = GameEnding.VICTORY;
+				currentMatchOutcome.WinningPlayers.Add(winner);
+				currentMatchOutcome.LosingPlayers.Add(GetInternalPlayer((ActivePlayerNumber % 2) + 1));
+			}
+
+			//Move was valid, but we have to check for a stalemate! If the moves repeat for three turns, it's a stalemate.
+			bool stalemate;
+			//Assignment is intentional
+			if (stalemate = (!playerWon && referee.IsStalemate))
+			{
+				MatchIsActive = false;
+				currentMatchOutcome.EndState = GameEnding.STALEMATE;
+				currentMatchOutcome.LosingPlayers.UnionWith(Players);
+			}
+
 			//mod 2 + 1 keeps it cycling between 1 and 2.
 			ActivePlayerNumber %= 2;
 			ActivePlayerNumber++;
 
-			tokensHaveBeenPlayed = true;
 			await CheckersHub.TokenPlayed(hub, moves);
 
 			if (tokenKinged)
@@ -431,11 +608,33 @@ namespace Bored_with_Web.Games
 				//Token was kinged by the move.
 				await CheckersHub.TokenKinged(hub, moves[^1]);
 			}
+
+			if (playerWon)
+			{
+				await hub.EndMatch(winner);
+			}
+
+			if (stalemate)
+			{
+				await hub.EndMatch();
+			}
 		}
 
 		public override bool PlayerCannotLeaveWithoutForfeiting()
 		{
 			return tokensHaveBeenPlayed && MatchIsActive;
+		}
+
+		public async override Task StartNewMatch<GameType, IMultiplayerClient>(MultiplayerGameHub<GameType, IMultiplayerClient> gameHub, Player externalPlayer)
+		{
+			board.Reset();
+			referee.Clear();
+			tokensHaveBeenPlayed = false;
+
+			Player internalPlayer = GetInternalPlayer(externalPlayer);
+			ActivePlayerNumber = internalPlayer.PlayerNumber;
+
+			await base.StartNewMatch(gameHub, internalPlayer);
 		}
 	}
 }
