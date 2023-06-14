@@ -1,7 +1,32 @@
 # Bored-with-Web
-This is being created as a class assignment; continued support and updates after the class ends will be subject to my interest in the project.
+This is a website where people can get together and play board games against each other. It was created as a class assignment during my time at a local college. The website uses a database to track user accounts and their associated gameplay statistics.
 
-## Initial Concept (Subject to Change)
+**Important: Playing games on this website *requires* a minimum of two players**.
+
+## Currently Implemented Games
+- Connect Four
+- Checkers
+
+## Preview
+As it is difficult to browse a website in code form (via this repository), some demo videos of some of this website's features are below. These are excerpts from a presentation to my peers, recorded on a live version of the website that can be found at https://bored-with-web.azurewebsites.net/
+___
+Game Lobby
+
+https://github.com/Preston-Haman/Bored-with-Web/assets/92552522/cd7bf259-7778-459b-84ed-7921de5cd2f4
+___
+Connect Four
+
+https://github.com/Preston-Haman/Bored-with-Web/assets/92552522/c832c153-342f-495c-beb4-3364eb4ef093
+___
+Checkers
+
+https://github.com/Preston-Haman/Bored-with-Web/assets/92552522/f85b25ef-2d87-4ad6-8b1c-f3ec3f74ae14
+___
+Joke API
+
+https://github.com/Preston-Haman/Bored-with-Web/assets/92552522/0bb4a71a-dc52-4002-8c01-c17af1df6df8
+___
+# Initial Concept (Subject to Change)
 A website where games can be played with other people
 
 - You can play a game with random people chosen from a lobby.
