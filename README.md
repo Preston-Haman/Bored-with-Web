@@ -8,7 +8,7 @@ This is a website where people can get together and play board games against eac
 - Checkers
 
 ## Preview
-As it is difficult to browse a website in code form (via this repository), some demo videos of some of this website's features are below. These are excerpts from a presentation to my peers, recorded on a live version of the website that can be found at https://bored-with-web.azurewebsites.net/
+As it is difficult to browse a website in code form (via this repository), some demo videos of some of this website's features are below. These are excerpts from a presentation to my peers, recorded on a live version of the website that could formerly be found at `https://bored-with-web.azurewebsites.net/`, but has since been taken down.
 ___
 Game Lobby
 
